@@ -3,37 +3,33 @@ export default class EscenaGameplay extends Phaser.Scene {
         super("EscenaGameplay");
     }
 
-    init() {
+    init(data) {
         // Variables de juego.
         this.physics.world.drawDebug = false;
         this.velocidadPersonaje = 600;
 
-        // Variables relacionadas con la puntuación y el oro.
-        this.cantidadOro = 0;
-        this.puntajeTotal = 0;
+        // Si no hay datos, usa valores por defecto.
+        this.cantidadOro = data?.cantidadOro ?? 0;
+        this.puntajeTotal = data?.puntajeTotal ?? 0;
+        this.longitudMecha = data?.longitudMecha ?? 100;
 
-        // Variables de la mecha de la bomba.
-        this.longitudMecha = 100; // Longitud inicial de la mecha (en porcentaje, 0-100).
-        this.mechaAcelerada = false; // Indica si el consumo de la mecha está acelerado (por tocar fuego).
-        this.temporizadorAcelerarConsumo = null; // Referencia al temporizador que controla la aceleración de la mecha.
+        this.mechaAcelerada = data?.mechaAcelerada ?? false;
+        this.tiempoRestanteAceleracion = data?.tiempoRestanteAceleracion ?? 0;
+
+        this.configuracionGeneracion = data?.configuracionGeneracion ?? {
+            cantidadAgujeros: 6,
+            cantidadFuegos: 5,
+            cantidadGruposRocas: 9,
+            cantidadTotalRocas: 20,
+            probabilidadOroca: 0.2,
+            probabilidadOrocaOculta: 0.8
+        };
 
         // Puntuaciones y valores de oro por destruir objetos.
         this.puntosPorRoca = 100; // Puntos obtenidos al destruir una roca normal.
         this.oroPorOroca = 100; // Oro obtenido al destruir una oroca.
 
         this.AnimacionesdePuntosPendientes = 0; // Contador de animaciones de puntos pendientes.
-
-        // Configuración para la generación de elementos en el mapa.
-        this.configuracionGeneracion = {
-            cantidadAgujeros: 6, // Cantidad de agujeros a generar.
-            cantidadFuegos: 5, // Cantidad de fuegos a generar.
-            cantidadGruposRocas: 9, // Número de grupos 3x3 para distribuir rocas.
-            cantidadTotalRocas: 20, // Cantidad total de rocas a generar.
-
-            // Probabilidades para la generación de orocas.
-            probabilidadOroca: 0.2, // Probabilidad de que una roca sea una oroca (50/50).
-            probabilidadOrocaOculta: 0.8 // Probabilidad de que una oroca sea inicialmente oculta (50/50).
-        };
 
         // Configuración de las teclas de control del jugador.
         this.cursores = this.input.keyboard.createCursorKeys(); // Teclas de flecha.
@@ -93,6 +89,11 @@ export default class EscenaGameplay extends Phaser.Scene {
     }
 
     create() {
+        console.log(`${this.mechaAcelerada}`);
+        console.log(`${this.tiempoRestanteAceleracion}`);
+
+
+
         // Calcula el centro de la cámara para posicionar elementos de fondo.
         const centroX = this.cameras.main.width / 2;
         const centroY = this.cameras.main.height / 2;
@@ -134,11 +135,19 @@ export default class EscenaGameplay extends Phaser.Scene {
 
 // --- Gráfico para Tachar la Habilidad XRAY ---
         // Este gráfico se usa para indicar visualmente que la habilidad XRAY no está disponible.
+        this.graficoTachadoXRAYFondo = this.add.graphics();
+        this.graficoTachadoXRAYFondo.fillStyle(0x08170d, 1); // Color#08170d .
+        // Posición y tamaño del rectángulo que simula el tachado.
+        this.graficoTachadoXRAYFondo.fillRect(185, 550, 410, 200); // x, y, ancho, alto.
+        this.graficoTachadoXRAYFondo.setDepth(31); // Asegura que esté por encima de otros elementos de la UI.
+        this.graficoTachadoXRAYFondo.setVisible(false); // Inicialmente oculto.
+
+
         this.graficoTachadoXRAY = this.add.graphics();
         this.graficoTachadoXRAY.fillStyle(0x42ded9, 1); // Color #42DED9.
         // Posición y tamaño del rectángulo que simula el tachado.
-        this.graficoTachadoXRAY.fillRect(185, 740, 410, 10); // x, y, ancho, alto.
-        this.graficoTachadoXRAY.setDepth(31); // Asegura que esté por encima de otros elementos de la UI.
+        this.graficoTachadoXRAY.fillRect(235, 655, 300, 10); // x, y, ancho, alto.
+        this.graficoTachadoXRAY.setDepth(32); // Asegura que esté por encima de otros elementos de la UI.
         this.graficoTachadoXRAY.setVisible(false); // Inicialmente oculto.
 
 // --- Configuración del Mapa y Capas ---
@@ -217,6 +226,14 @@ export default class EscenaGameplay extends Phaser.Scene {
             2 // Frame del sprite del personaje.
         );
         this.personaje.setCollideWorldBounds(true); // Asegura que el personaje no salga de los límites del mundo.
+
+    if (this.mechaAcelerada && this.tiempoRestanteAceleracion > 0) {
+        this.temporizadorAcelerarConsumo = this.time.delayedCall(this.tiempoRestanteAceleracion, () => {
+            this.mechaAcelerada = false;
+            this.temporizadorAcelerarConsumo = null;
+            console.log("El consumo de la mecha ha vuelto a la normalidad.");
+        }, [], this);
+    }
 
 // --- Configuración de Colisiones y Solapamientos ---
         // como creamos los grupos, ahora podemos asignarles colisiones entre si :D
@@ -424,7 +441,8 @@ export default class EscenaGameplay extends Phaser.Scene {
 
         // Reinicia la escena con la tecla 'R'.
         if (Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.R)) {
-            this.scene.restart();
+            const escenaMaestra = this.scene.get('EscenaMaestra');
+            escenaMaestra.reiniciarGameplayDeFabrica()
         }
     }
 
@@ -433,6 +451,7 @@ export default class EscenaGameplay extends Phaser.Scene {
         // Se activa con las teclas 'E' o 'Z'.
         if (Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.E) || Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.Z)) {
             const costoXRAY = 500;
+
             // Verifica si hay orocas ocultas que aún no han sido reveladas.
             const hayOcultasNoReveladas = this.orocas.some(oroca => oroca.oculta && !oroca.revelada);
 
@@ -454,6 +473,7 @@ export default class EscenaGameplay extends Phaser.Scene {
                 // Si no quedan, muestra el gráfico de tachado para indicar que la habilidad está "agotada".
                 const aunHayOcultasNoReveladas = this.orocas.some(oroca => oroca.oculta && !oroca.revelada);
                 if (!aunHayOcultasNoReveladas) {
+                    this.graficoTachadoXRAYFondo.setVisible(true); 
                     this.graficoTachadoXRAY.setVisible(true);
                     console.log("Todas las orocas ocultas han sido reveladas. XRAY no puede usarse más.");
                 }
@@ -463,6 +483,7 @@ export default class EscenaGameplay extends Phaser.Scene {
             } else if (!hayOcultasNoReveladas) {
                 console.log("No hay orocas ocultas que revelar.");
                 // Si no hay orocas ocultas, la habilidad XRAY está "agotada" para esta ronda.
+                this.graficoTachadoXRAYFondo.setVisible(true); 
                 this.graficoTachadoXRAY.setVisible(true);
             }
         }
@@ -703,18 +724,25 @@ export default class EscenaGameplay extends Phaser.Scene {
             // Detiene todos los eventos de tiempo para evitar que sigan ejecutándose.
             this.time.removeAllEvents();
             const escenaMaestra = this.scene.get('EscenaMaestra');
-            escenaMaestra.notificarFinDeJuego();
-            this.scene.restart(); // Reinicia la escena (esto es de momento, en algun momento llevara a "Fin de Juego").
+            escenaMaestra.reiniciarGameplayDeFabrica()
         }
     }
 
     verificarFinDeJuego() {
-    // Si la explosión principal ha terminado Y no hay más animaciones de puntos pendientes, reinicia la escena.
         if (this.AnimacionesdePuntosPendientes === 0 && this.SpritedeExplosionDestruido) {
             console.log("Todas las animaciones de puntos han terminado y la explosión ha finalizado. Reiniciando escena...");
-                    const escenaMaestra = this.scene.get('EscenaMaestra');
-            escenaMaestra.notificarFinDeJuego();
-            this.scene.restart();
+            const escenaMaestra = this.scene.get('EscenaMaestra');
+            // Guarda los valores actuales en la escena maestra
+            escenaMaestra.cantidadOro = this.cantidadOro;
+            escenaMaestra.puntajeTotal = this.puntajeTotal;
+            escenaMaestra.longitudMecha = this.longitudMecha;
+            escenaMaestra.mechaAcelerada = this.mechaAcelerada;
+            if (this.mechaAcelerada && this.temporizadorAcelerarConsumo) {
+                escenaMaestra.tiempoRestanteAceleracion = this.temporizadorAcelerarConsumo.getRemaining();
+            } else {
+                escenaMaestra.tiempoRestanteAceleracion = 0;
+            }
+            escenaMaestra.reiniciarGameplay(); // Llama a la maestra para relanzar con los valores actualizados
         }
     }
 }
