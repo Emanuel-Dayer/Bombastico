@@ -1,5 +1,6 @@
 import EscenaMaestra from "./scenes/EscenaMaestra.js";
 import EscenaGameplay from "./scenes/EscenaGameplay.js";
+import Menus from "./scenes/Menus.js";
 
 const config = {
   type: Phaser.AUTO,
@@ -16,7 +17,8 @@ const config = {
       debug: true,
     },
   },
-    scene: [EscenaMaestra, EscenaGameplay],
+    //scene: [EscenaMaestra, EscenaGameplay],
+    scene: [Menus],
 };
 
 window.game = new Phaser.Game(config);
