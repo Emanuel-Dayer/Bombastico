@@ -53,6 +53,11 @@ export default class EscenaGameplay extends Phaser.Scene {
             "P": Phaser.Input.Keyboard.KeyCodes.P, // Para activar/desactivar el modo de debug
             "R": Phaser.Input.Keyboard.KeyCodes.R, // Para reiniciar la escena
         });
+
+        // Estado del juego para controlar el inicio de la mecha y el movimiento del jugador
+        this.juegoIniciado = false;
+        this.mechaActiva = true;
+        this.SpritedeExplosionDestruido = false; // Asegurar que esta variable esté inicializada
     }
 
     preload() {
@@ -92,13 +97,11 @@ export default class EscenaGameplay extends Phaser.Scene {
         console.log(`${this.mechaAcelerada}`);
         console.log(`${this.tiempoRestanteAceleracion}`);
 
-
-
         // Calcula el centro de la cámara para posicionar elementos de fondo.
         const centroX = this.cameras.main.width / 2;
         const centroY = this.cameras.main.height / 2;
 
-// --- Elementos de UI y Fondo ---
+        // --- Elementos de UI y Fondo ---
         // Se añaden primero para que estén en la parte inferior de las capas.
         this.add.image(centroX, centroY, "fondoJuego").setOrigin(0.5).setDepth(0);
         this.add.image(centroX, centroY, "interfazJuego").setOrigin(0.5).setDepth(30);
@@ -108,18 +111,20 @@ export default class EscenaGameplay extends Phaser.Scene {
         this.actualizarRecorteMecha(); // Llama a la función para establecer el recorte inicial de la mecha.
 
         // Configura un temporizador para quemar la mecha regularmente.
-        this.time.addEvent({
+        // Almacenamos la referencia al evento del temporizador.
+        this.mechaTimerEvent = this.time.addEvent({
             delay: 200, // Cada 200 milisegundos (0.2 segundos).
             callback: this.quemarMecha, // Llama a la función que decrementa la mecha.
             callbackScope: this, // Contexto de la función (this se refiere a la escena).
-            loop: true // Se repite indefinidamente.
+            loop: true, // Se repite indefinidamente.
+            paused: true // Inicialmente pausado hasta que la secuencia de intro termine.
         });
 
-// --- Textos de la Interfaz de Usuario (UI) ---
+        // --- Textos de la Interfaz de Usuario (UI) ---
         // Icono de oro
-        this.add.image(250, 570 -160, "iconoOro").setOrigin(0.5).setScale(1.5).setDepth(30);
+        this.add.image(250, 570 - 160, "iconoOro").setOrigin(0.5).setScale(1.5).setDepth(30);
         // Se crean los elementos de texto para mostrar información al jugador.
-        this.textoCantidadOro = this.add.text(332 , 550 -165, `${this.cantidadOro}`.padStart(10, "0"), {
+        this.textoCantidadOro = this.add.text(332, 550 - 165, `${this.cantidadOro}`.padStart(10, "0"), {
             fontSize: "45px",
             fill: "#42DED9",
             fontFamily: "Impact"
@@ -133,7 +138,7 @@ export default class EscenaGameplay extends Phaser.Scene {
             fontFamily: "Impact"
         }).setDepth(30);
 
-// --- Gráfico para Tachar la Habilidad XRAY ---
+        // --- Gráfico para Tachar la Habilidad XRAY ---
         // Este gráfico se usa para indicar visualmente que la habilidad XRAY no está disponible.
         this.graficoTachadoXRAYFondo = this.add.graphics();
         this.graficoTachadoXRAYFondo.fillStyle(0x08170d, 1); // Color#08170d .
@@ -150,7 +155,7 @@ export default class EscenaGameplay extends Phaser.Scene {
         this.graficoTachadoXRAY.setDepth(32); // Asegura que esté por encima de otros elementos de la UI.
         this.graficoTachadoXRAY.setVisible(false); // Inicialmente oculto.
 
-// --- Configuración del Mapa y Capas ---
+        // --- Configuración del Mapa y Capas ---
         // Se carga el tilemap y se crean las capas de tiles.
         const mapa = this.make.tilemap({ key: "mapaPrincipal" });
         const tileset = mapa.addTilesetImage("tileset", "imagenTileset");
@@ -162,13 +167,13 @@ export default class EscenaGameplay extends Phaser.Scene {
         this.capaAgujeros = mapa.createLayer("Agujeros", tileset, 0, 0);
         this.capaFuegos = mapa.createLayer("fuegos", tileset, 0, 0);
 
-// --- Propiedades de los Tiles ---
+        // --- Propiedades de los Tiles ---
         /* Se obtienen las propiedades de los tiles del tileset, 
         útiles para determinar si una posición es válida para la generación de objetos.*/
         const datosTileset = mapa.tilesets[0];
         const propiedadesTiles = datosTileset.tileProperties || {};
 
- // --- Generación de Posiciones Válidas para Objetos ---
+        // --- Generación de Posiciones Válidas para Objetos ---
         // Se crea un array con todas las coordenadas (x, y) de los tiles donde se pueden generar objetos.
         let posicionesValidas = [];
         for (let y = 0; y < mapa.height; y++) {
@@ -184,7 +189,7 @@ export default class EscenaGameplay extends Phaser.Scene {
             }
         }
 
-// --- Función para Verificar si una Posición es Válida para Colocar un Objeto ---
+        // --- Función para Verificar si una Posición es Válida para Colocar un Objeto ---
         // Esta función se utiliza para asegurar que los objetos no se generen en lugares no deseados.
         const esPosicionValidaParaGeneracion = (x, y) => {
             // Verifica límites del mapa.
@@ -202,21 +207,21 @@ export default class EscenaGameplay extends Phaser.Scene {
             return true;
         };
 
-// --- Generación de Rocas y Orocas ---
+        // --- Generación de Rocas y Orocas ---
         // grupo para las rocas, para añadirles colision despues.
         this.grupoRocas = this.physics.add.staticGroup();
         this.orocas = []; // Array para almacenar las orocas generadas, incluyendo su estado.
         this.generarRocasYOrocas(mapa, esPosicionValidaParaGeneracion, posicionesValidas, propiedadesTiles, datosTileset);
 
-// --- Generación de Agujeros ---
+        // --- Generación de Agujeros ---
         this.grupoAgujeros = this.physics.add.staticGroup();
         this.generarAgujeros(mapa, esPosicionValidaParaGeneracion, posicionesValidas);
 
-// --- Generación de Fuegos ---
+        // --- Generación de Fuegos ---
         this.grupoFuegos = this.physics.add.group();
         this.generarFuegos(mapa, esPosicionValidaParaGeneracion, posicionesValidas);
 
-// --- Creación del Personaje ---
+        // --- Creación del Personaje ---
         // Se busca el punto de spawn del personaje definido en el tilemap.
         const puntoSpawnPersonaje = mapa.findObject("Objetos", (obj) => obj.name === "bombaspawn");
         this.personaje = this.physics.add.sprite(
@@ -225,17 +230,19 @@ export default class EscenaGameplay extends Phaser.Scene {
             "spritesTileset",
             2 // Frame del sprite del personaje.
         );
+
+        this.personaje.setSize(40, 40).setOffset(10, 10); // Cambia el tamaño y Centra la hitbox (60-40)/2 = 10
         this.personaje.setCollideWorldBounds(true); // Asegura que el personaje no salga de los límites del mundo.
 
-    if (this.mechaAcelerada && this.tiempoRestanteAceleracion > 0) {
-        this.temporizadorAcelerarConsumo = this.time.delayedCall(this.tiempoRestanteAceleracion, () => {
-            this.mechaAcelerada = false;
-            this.temporizadorAcelerarConsumo = null;
-            console.log("El consumo de la mecha ha vuelto a la normalidad.");
-        }, [], this);
-    }
+        if (this.mechaAcelerada && this.tiempoRestanteAceleracion > 0) {
+            this.temporizadorAcelerarConsumo = this.time.delayedCall(this.tiempoRestanteAceleracion, () => {
+                this.mechaAcelerada = false;
+                this.temporizadorAcelerarConsumo = null;
+                console.log("El consumo de la mecha ha vuelto a la normalidad.");
+            }, [], this);
+        }
 
-// --- Configuración de Colisiones y Solapamientos ---
+        // --- Configuración de Colisiones y Solapamientos ---
         // como creamos los grupos, ahora podemos asignarles colisiones entre si :D
         this.capaBarrera.setCollisionByProperty({ colisionable: true }); // Las tiles con la propiedad 'colisionable: true' serán colisionables, duh.
         this.physics.add.collider(this.personaje, this.capaBarrera); // Colisión entre el personaje y las barreras.
@@ -244,29 +251,46 @@ export default class EscenaGameplay extends Phaser.Scene {
         // overlap entre el personaje y los fuegos. llamará a la función 'manejarContactoFuego'.
         this.physics.add.overlap(this.personaje, this.grupoFuegos, this.manejarContactoFuego, null, this);
 
-// --- Event Listener para la Detonación de la Bomba ---
-// un event listener, espera a que ocurra algo (en este caso, una tecla presionada) para ejecutar una función.
+        // --- Event Listener para la Detonación de la Bomba ---
+        // un event listener, espera a que ocurra algo (en este caso, una tecla presionada) para ejecutar una función.
         this.teclasPersonalizadas.ESPACIO.on('down', this.crearExplosion, this);
+
+        // Deshabilitar controles del jugador y pausar la mecha al inicio
+        this.habilitarControlesJugador(false);
+
+        /* dejar que la mecha no consuma al inicio, asi no puede spamear explotar sin consecuencia. 
+        esto sumado a que la explosion real inicial destruye rocas al alcance del jugador en la posicion inicial,
+        haciendo que el jugador por lo menos tenga un incentivo para moverse un poco y conseguir oro o puntos :D
+        */
+        if (this.mechaTimerEvent) {
+            this.mechaTimerEvent.paused = false;
+        }
+
+        // Iniciar la secuencia de introducción
+        this.iniciarSecuenciaIntro();
     }
 
     update() {
-        // Maneja el movimiento del personaje según las teclas presionadas.
-        this.manejarMovimientoPersonaje();
+        // Solo manejar el movimiento y otras lógicas si el juego ha iniciado
+        if (this.juegoIniciado) {
+            // Maneja el movimiento del personaje según las teclas presionadas.
+            this.manejarMovimientoPersonaje();
 
-        // Maneja la activación/desactivación del modo de depuración y el reinicio del juego.
-        this.manejarDebugReiniciar();
+            // Maneja la activación/desactivación del modo de depuración y el reinicio del juego.
+            this.manejarDebugReiniciar();
 
-        // Maneja la lógica para la habilidad XRAY (revelar orocas ocultas).
-        this.manejarHabilidadXRAY();
+            // Maneja la lógica para la habilidad XRAY (revelar orocas ocultas).
+            this.manejarHabilidadXRAY();
 
-        // Maneja la lógica para la habilidad de extender la mecha.
-        this.manejarHabilidadExtenderMecha();
+            // Maneja la lógica para la habilidad de extender la mecha.
+            this.manejarHabilidadExtenderMecha();
 
-        // Función de prueba para sumar oro (se activa con la tecla 'F').
-        this.sumarOroPrueba();
+            // Función de prueba para sumar oro (se activa con la tecla 'F').
+            this.sumarOroPrueba();
+        }
     }
 
-// --- Métodos de Generación de Objetos ---
+    // --- Métodos de Generación de Objetos ---
 
     // Genera rocas normales y orocas (rocas con oro) en el mapa.
     generarRocasYOrocas(mapa, esPosicionValidaParaGeneracion, posicionesValidasOriginales, propiedadesTiles, datosTileset) {
@@ -411,24 +435,172 @@ export default class EscenaGameplay extends Phaser.Scene {
         }
     }
 
+ // --- funciones para la secuencia de inicio ---
 
-// --- Métodos de Lógica del Juego ---
+    // Habilita o deshabilita los controles del jugador.
+    habilitarControlesJugador(habilitar) {
+        this.cursores.enabled = habilitar;
+        Object.values(this.teclasPersonalizadas).forEach(key => {
+            if (key && typeof key.enabled !== "undefined") {
+                key.enabled = habilitar;
+            }
+        });
+    }
+
+    // Inicia la secuencia de introducción del juego (personaje grande, encogimiento, explosión inicial).
+    iniciarSecuenciaIntro() {
+        // Asegurarse de que el personaje esté visible y habilitado para la animación de escala
+        this.personaje.setVisible(true);
+        this.personaje.body.enable = false; // Deshabilitar física durante la animación
+
+        this.personaje.setAlpha(0); // Empezar invisible para un fade-in
+
+        // Animación de encogimiento y aparición del personaje
+        this.tweens.add({
+            targets: this.personaje,
+            scale: { from: 50, to: 1 }, // De tamaño enorme a tamaño original
+            alpha: { from: 0, to: 1 }, // De invisible a visible
+            ease: 'quart.easeIn', // Tipo de interpolación para la animación
+            duration: 700, // Duración de la animación en milisegundos
+            onComplete: () => {
+                // Una vez que el personaje está en su tamaño original, crear la explosión visual y la real
+                this.CrearExplosionVisual();
+                this.CrearExplosionReal(); // Llamar a la explosión real
+            }
+        });
+    }
+
+    // Esto es solo para que la explosion se vea mas epica, pero el verdadero esta abajo en CrearExplosionReal
+    CrearExplosionVisual() {
+        const centroExplosionX = this.personaje.x;
+        const centroExplosionY = this.personaje.y;
+        const radioExplosion = 500;
+
+        // Crea un círculo visual para la explosión inicial
+        this.introExplosionSprite = this.add.circle(centroExplosionX, centroExplosionY, 0, 0x42DED9, 0.5);
+        this.introExplosionSprite.setDepth(29); // Asegura que esté por encima de todo
+
+        // Animación de la explosión inicial
+        this.tweens.add({
+            targets: this.introExplosionSprite,
+            radius: { from: 0, to: radioExplosion }, // El círculo crece
+            alpha: { from: 1, to: 0 }, // Se desvanece
+            ease: 'cubic.easeOut',
+            duration: 500, // Duración de la animación
+            onComplete: () => {
+                this.introExplosionSprite.destroy(); // Destruye el sprite de la explosión
+            }
+        });
+    }
+
+    // esto crea una radio de explosion invisible, pero con fisicas de 60 x 60 px que comienza pequeño y se expande hasta el tamaño de 60 x 60 px, actualizando mientras crece su hitbox, asi destruye todos los objetos fisicos con lo que haga overlap, excepto el jugador, sin dar puntos ni nada
+    CrearExplosionReal() {
+        const centroExplosionX = this.personaje.x;
+        const centroExplosionY = this.personaje.y;
+        const radioExplosion = 60;
+
+        // Crea un sprite invisible para la explosión física
+        this.explosionReal = this.physics.add.sprite(centroExplosionX, centroExplosionY, null)
+            .setOrigin(0.5)
+            .setCircle(0)
+            .setAlpha(0)
+            .setDepth(29);
+
+        // Solapamientos con grupos
+        this.physics.add.overlap(this.explosionReal, this.grupoRocas, this.explosionInicialGolpeaRoca, null, this);
+        this.physics.add.overlap(this.explosionReal, this.grupoAgujeros, this.explosionInicialGolpeaAgujero, null, this);
+        this.physics.add.overlap(this.explosionReal, this.grupoFuegos, this.explosionInicialGolpeaFuego, null, this);
+
+        // Animación de expansión de la hitbox circular
+        this.tweens.add({
+            targets: this.explosionReal.body,
+            radius: { from: 0, to: radioExplosion},
+            duration: 200,
+            ease: 'Linear',
+            onUpdate: () => {
+                this.explosionReal.body.setCircle(this.explosionReal.body.radius);
+                // Centrar el círculo en el sprite
+                this.explosionReal.body.setOffset(
+                    this.explosionReal.width / 2 - this.explosionReal.body.radius,
+                    this.explosionReal.height / 2 - this.explosionReal.body.radius
+                );
+            },
+            onComplete: () => {
+                this.explosionReal.destroy();
+                // Habilitar juego
+                this.juegoIniciado = true;
+                this.personaje.body.enable = true;
+                this.habilitarControlesJugador(true);
+                this.mechaActiva = true;
+                if (this.mechaTimerEvent) {
+                    this.mechaTimerEvent.paused = false;
+                }
+                console.log("Secuencia de introducción completada. Juego iniciado.");
+            }
+        });
+    }
+
+    // Maneja la lógica cuando la explosión inicial golpea una roca (sin dar puntos ni oro)
+    explosionInicialGolpeaRoca(explosion, rocaGolpeada) {
+        if (!rocaGolpeada.active) {
+            return;
+        }
+
+        // Elimina el tile correspondiente del tilemap
+        if (rocaGolpeada.tileX !== undefined && rocaGolpeada.tileY !== undefined) {
+            this.capaRocas.removeTileAt(rocaGolpeada.tileX, rocaGolpeada.tileY);
+        }
+        rocaGolpeada.destroy(); // Destruye el sprite de la roca
+    }
+
+    // Maneja la lógica cuando la explosión inicial golpea un agujero (sin dar puntos ni oro)
+    explosionInicialGolpeaAgujero(explosion, agujeroGolpeado) {
+        if (!agujeroGolpeado.active) {
+            return;
+        }
+        // Elimina el tile correspondiente del tilemap (si aplica)
+        // Nota: Los agujeros no tienen un tileX/tileY directamente en tu código,
+        // si los tuvieras, los eliminarías aquí. Por ahora, solo destruimos el sprite.
+        agujeroGolpeado.destroy(); // Destruye el sprite del agujero
+    }
+
+    // Maneja la lógica cuando la explosión inicial golpea un fuego (sin dar puntos ni oro)
+    explosionInicialGolpeaFuego(explosion, fuegoGolpeado) {
+        if (!fuegoGolpeado.active) {
+            return;
+        }
+        // Elimina el tile correspondiente del tilemap (si aplica)
+        fuegoGolpeado.destroy(); // Destruye el sprite del fuego
+    }
+
+    // --- Métodos de Lógica del Juego ---
 
     // Controla el movimiento del personaje basado en la entrada del teclado.
     manejarMovimientoPersonaje() {
-        this.personaje.setVelocity(0);
-        // Movimiento vertical.
+        let vx = 0;
+        let vy = 0;
+
         if (this.cursores.up.isDown || this.teclasPersonalizadas.W.isDown) {
-            this.personaje.setVelocityY(-this.velocidadPersonaje);
-        } else if (this.cursores.down.isDown || this.teclasPersonalizadas.S.isDown) {
-            this.personaje.setVelocityY(this.velocidadPersonaje);
+            vy -= 1;
         }
-        // Movimiento horizontal.
+        if (this.cursores.down.isDown || this.teclasPersonalizadas.S.isDown) {
+            vy += 1;
+        }
         if (this.cursores.left.isDown || this.teclasPersonalizadas.A.isDown) {
-            this.personaje.setVelocityX(-this.velocidadPersonaje);
-        } else if (this.cursores.right.isDown || this.teclasPersonalizadas.D.isDown) {
-            this.personaje.setVelocityX(this.velocidadPersonaje);
+            vx -= 1;
         }
+        if (this.cursores.right.isDown || this.teclasPersonalizadas.D.isDown) {
+            vx += 1;
+        }
+
+        // Normaliza para que la velocidad diagonal no sea mayor
+        if (vx !== 0 || vy !== 0) {
+            const length = Math.sqrt(vx * vx + vy * vy);
+            vx = (vx / length) * this.velocidadPersonaje;
+            vy = (vy / length) * this.velocidadPersonaje;
+        }
+
+        this.personaje.setVelocity(vx, vy);
     }
 
     // Debuj y movimiento.
@@ -473,7 +645,7 @@ export default class EscenaGameplay extends Phaser.Scene {
                 // Si no quedan, muestra el gráfico de tachado para indicar que la habilidad está "agotada".
                 const aunHayOcultasNoReveladas = this.orocas.some(oroca => oroca.oculta && !oroca.revelada);
                 if (!aunHayOcultasNoReveladas) {
-                    this.graficoTachadoXRAYFondo.setVisible(true); 
+                    this.graficoTachadoXRAYFondo.setVisible(true);
                     this.graficoTachadoXRAY.setVisible(true);
                     console.log("Todas las orocas ocultas han sido reveladas. XRAY no puede usarse más.");
                 }
@@ -483,7 +655,7 @@ export default class EscenaGameplay extends Phaser.Scene {
             } else if (!hayOcultasNoReveladas) {
                 console.log("No hay orocas ocultas que revelar.");
                 // Si no hay orocas ocultas, la habilidad XRAY está "agotada" para esta ronda.
-                this.graficoTachadoXRAYFondo.setVisible(true); 
+                this.graficoTachadoXRAYFondo.setVisible(true);
                 this.graficoTachadoXRAY.setVisible(true);
             }
         }
@@ -521,25 +693,19 @@ export default class EscenaGameplay extends Phaser.Scene {
         }
     }
 
-// --- Funciones de Eventos y Mecánicas del Juego ---
+    // --- Funciones de Eventos y Mecánicas del Juego ---
 
-     // Crea el sprite de la explosión y gestiona su animación y efectos.
+    // Crea el sprite de la explosión y gestiona su animación y efectos.
     crearExplosion() {
         // parar que la mecha no se queme mientras se crea la explosión.
-        this.time.removeAllEvents ();
+        this.time.removeAllEvents();
 
         // eliminar el jugador
         this.personaje.setVisible(false); // Oculta el sprite del personaje.
         this.personaje.body.enable = false; // Desactiva el cuerpo de física del personaje
 
         // desabilitar todas las teclas de control del jugador.
-        this.cursores.enabled = false; // Desactiva las teclas de flecha.
-        // Desactiva todas las teclas personalizadas.
-        Object.values(this.teclasPersonalizadas).forEach(key => {
-            if (key && typeof key.enabled !== "undefined") {
-                key.enabled = false;
-            }
-        });
+        this.habilitarControlesJugador(false);
 
         // Obtiene la posición actual del personaje (donde se detonó la bomba).
         const xPersonaje = this.personaje.x;
@@ -680,7 +846,7 @@ export default class EscenaGameplay extends Phaser.Scene {
     manejarContactoFuego(personaje, fuegoTocado) {
         console.log("¡El personaje ha tocado el fuego!");
         fuegoTocado.destroy(); // Elimina el sprite de fuego al ser tocado.
-        
+
         if (this.temporizadorAcelerarConsumo) {
             this.temporizadorAcelerarConsumo.destroy();
         }
@@ -714,12 +880,12 @@ export default class EscenaGameplay extends Phaser.Scene {
 
     // Decrementa la longitud de la mecha y reinicia el juego si se consume por completo.
     quemarMecha() {
-        if (this.longitudMecha > 0) {
+        if (this.longitudMecha > 0 && this.mechaActiva) { // Solo quema la mecha si está activa
             // Define la cantidad de decremento. Es mayor si la mecha está acelerada.
             const decrementoMecha = this.mechaAcelerada ? 1 : 0.1; // 1 para acelerado, 0.1 para normal.
             this.longitudMecha -= decrementoMecha;
             this.actualizarRecorteMecha(); // Actualiza la visualización de la mecha.
-        } else {
+        } else if (this.longitudMecha <= 0 && this.mechaActiva) {
             console.log("¡La mecha se ha consumido! Fin del juego.");
             // Detiene todos los eventos de tiempo para evitar que sigan ejecutándose.
             this.time.removeAllEvents();
