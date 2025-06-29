@@ -9,9 +9,6 @@ export default class EscenaGameplay extends Phaser.Scene {
         this.velocidadPersonaje = 600;
 
         // Variables relacionadas con la puntuación y el oro.
-        this.puntosCuotaActuales = 0;
-        this.puntosObjetivoCuota = 0;
-        this.DiasRestantesObjetivoCuota = 2;
         this.cantidadOro = 0;
         this.puntajeTotal = 0;
 
@@ -68,7 +65,7 @@ export default class EscenaGameplay extends Phaser.Scene {
         this.load.image("imagenTileset", "public/assets/texture.svg");
 
         // Carga de imágenes individuales para la interfaz de usuario y elementos del juego.
-        this.load.image("interfazJuego", "./public/assets/Gameplay_2.svg");
+        this.load.image("interfazJuego", "./public/assets/Gameplay_3.svg");
         this.load.image("fondoJuego", "./public/assets/fondo.svg");
         this.load.image("iconoOro", "./public/assets/oro.svg");
         this.load.image("imagenMecha", "./public/assets/Mecha.svg");
@@ -117,43 +114,20 @@ export default class EscenaGameplay extends Phaser.Scene {
             loop: true // Se repite indefinidamente.
         });
 
-        // Icono de oro en la interfaz.
-        this.add.image(250, 570, "iconoOro").setOrigin(0.5).setScale(1.5).setDepth(30);
-
 // --- Textos de la Interfaz de Usuario (UI) ---
+        // Icono de oro
+        this.add.image(250, 570 -160, "iconoOro").setOrigin(0.5).setScale(1.5).setDepth(30);
         // Se crean los elementos de texto para mostrar información al jugador.
-        this.textoCuota = this.add.text(258, 200, "CUOTA", {
-            fontSize: "35px",
+        this.textoCantidadOro = this.add.text(332 , 550 -165, `${this.cantidadOro}`.padStart(10, "0"), {
+            fontSize: "45px",
             fill: "#42DED9",
             fontFamily: "Impact"
         }).setDepth(30);
 
-        this.textopuntosCuotaActuales = this.add.text(200, 270, `${this.puntosCuotaActuales} /`.padStart(12, "0"), {
-            fontSize: "35px",
-            fill: "#42DED9",
-            fontFamily: "Impact"
-        }).setDepth(30);
-
-        this.textopuntosObjetivoCuota = this.add.text(200, 340, `${this.puntosObjetivoCuota}`.padStart(10, "0"), {
-            fontSize: "35px",
-            fill: "#42DED9",
-            fontFamily: "Impact"
-        }).setDepth(30);
-
-        this.texto = this.add.text(480, 240, `${this.DiasRestantesObjetivoCuota}`.padStart(2, "0"), {
-            fontSize: "80px",
-            fill: "#42DED9",
-            fontFamily: "Impact"
-        }).setDepth(30);
-
-        this.textoCantidadOro = this.add.text(368, 550, `${this.cantidadOro}`.padStart(10, "0"), {
-            fontSize: "35px",
-            fill: "#42DED9",
-            fontFamily: "Impact"
-        }).setDepth(30);
-
-        this.textoPuntosTotal = this.add.text(202, 455, `PUNTOS:        ` + `${this.puntajeTotal}`.padStart(10, "0"), {
-            fontSize: "35px",
+        // icono de imagen de roca
+        this.add.image(250, 475 - 200, "spritesTileset", 7 - 1).setOrigin(0.5).setScale(1.2).setDepth(30);
+        this.textopuntajeTotal = this.add.text(332, 450 - 200, `${this.puntajeTotal}`.padStart(10, "0"), {
+            fontSize: "45px",
             fill: "#42DED9",
             fontFamily: "Impact"
         }).setDepth(30);
@@ -381,19 +355,20 @@ export default class EscenaGameplay extends Phaser.Scene {
         }
     }
 
-    // Genera fuegos en el mapa.
     generarFuegos(mapa, esPosicionValidaParaGeneracion, posicionesValidasOriginales) {
         let posicionesDisponibles = [...posicionesValidasOriginales];
         let posicionesUsadas = new Set();
         let cantidadFuegos = this.configuracionGeneracion.cantidadFuegos;
 
         // Crea la animación global del fuego una sola vez.
-        this.anims.create({
-            key: "animacionFuego",
-            frames: this.anims.generateFrameNumbers("spritesFuego", { start: 0, end: 1 }),
-            frameRate: 10,
-            repeat: -1
-        });
+        if (!this.anims.exists("animacionFuego")) {
+            this.anims.create({
+                key: "animacionFuego",
+                frames: this.anims.generateFrameNumbers("spritesFuego", { start: 0, end: 1 }),
+                frameRate: 10,
+                repeat: -1
+            });
+        }
 
         let fuegosColocados = 0;
         while (fuegosColocados < cantidadFuegos && posicionesDisponibles.length > 0) {
@@ -595,10 +570,10 @@ export default class EscenaGameplay extends Phaser.Scene {
 
         if (esOroca) {
             // Si es una oroca, suma puntos y oro.
-            this.puntosCuotaActuales += this.puntosPorRoca;
+            this.puntajeTotal += this.puntosPorRoca;
             this.cantidadOro += this.oroPorOroca;
             this.textoCantidadOro.setText(`${this.cantidadOro}`.padStart(10, "0"));
-            console.log(`¡Oroca destruida! Puntos: ${this.puntosCuotaActuales}, Oro: ${this.cantidadOro}`);
+            console.log(`¡Oroca destruida! Puntos: ${this.puntajeTotal}, Oro: ${this.cantidadOro}`);
 
             // Elimina la oroca del array de orocas para que no se pueda interactuar con ella de nuevo.
             if (indiceOroca !== -1) {
@@ -608,14 +583,14 @@ export default class EscenaGameplay extends Phaser.Scene {
             this.MostrarAnimacionesdeTexto(rocaGolpeada.x, rocaGolpeada.y, this.puntosPorRoca, this.oroPorOroca);
         } else {
             // Si es una roca normal, solo suma puntos.
-            this.puntosCuotaActuales += this.puntosPorRoca;
-            console.log(`¡Roca destruida! Puntos: ${this.puntosCuotaActuales}`);
+            this.puntajeTotal += this.puntosPorRoca;
+            console.log(`¡Roca destruida! Puntos: ${this.puntajeTotal}`);
             // Muestra la animación de puntos.
             this.MostrarAnimacionesdeTexto(rocaGolpeada.x, rocaGolpeada.y, this.puntosPorRoca);
         }
 
         // Actualiza el texto de los puntos actuales en la UI.
-        this.textopuntosCuotaActuales.setText(`${this.puntosCuotaActuales} /`.padStart(12, "0"));
+        this.textopuntajeTotal.setText(`${this.puntajeTotal}`.padStart(10, "0"));
 
         // Elimina el tile correspondiente del tilemap para que no se renderice visualmente.
         if (rocaGolpeada.tileX !== undefined && rocaGolpeada.tileY !== undefined) {
@@ -727,6 +702,8 @@ export default class EscenaGameplay extends Phaser.Scene {
             console.log("¡La mecha se ha consumido! Fin del juego.");
             // Detiene todos los eventos de tiempo para evitar que sigan ejecutándose.
             this.time.removeAllEvents();
+            const escenaMaestra = this.scene.get('EscenaMaestra');
+            escenaMaestra.notificarFinDeJuego();
             this.scene.restart(); // Reinicia la escena (esto es de momento, en algun momento llevara a "Fin de Juego").
         }
     }
@@ -735,6 +712,8 @@ export default class EscenaGameplay extends Phaser.Scene {
     // Si la explosión principal ha terminado Y no hay más animaciones de puntos pendientes, reinicia la escena.
         if (this.AnimacionesdePuntosPendientes === 0 && this.SpritedeExplosionDestruido) {
             console.log("Todas las animaciones de puntos han terminado y la explosión ha finalizado. Reiniciando escena...");
+                    const escenaMaestra = this.scene.get('EscenaMaestra');
+            escenaMaestra.notificarFinDeJuego();
             this.scene.restart();
         }
     }

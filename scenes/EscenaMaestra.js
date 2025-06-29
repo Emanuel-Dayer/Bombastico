@@ -23,4 +23,8 @@ export default class EscenaMaestra extends Phaser.Scene {
     update() {
 
     }
+
+    notificarFinDeJuego() {
+        console.log("¡Fin de juego notificado desde EscenaGameplay!");
+    }
 }
