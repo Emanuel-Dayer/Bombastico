@@ -1,4 +1,5 @@
-import EscenaUno from "./scenes/Escena.js";
+import EscenaMaestra from "./scenes/EscenaMaestra.js";
+import EscenaGameplay from "./scenes/EscenaGameplay.js";
 
 const config = {
   type: Phaser.AUTO,
@@ -15,7 +16,7 @@ const config = {
       debug: true,
     },
   },
-  scene: [EscenaUno],
+    scene: [EscenaMaestra, EscenaGameplay],
 };
 
 window.game = new Phaser.Game(config);

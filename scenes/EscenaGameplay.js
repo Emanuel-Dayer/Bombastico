@@ -1,6 +1,6 @@
-export default class Escena extends Phaser.Scene {
+export default class EscenaGameplay extends Phaser.Scene {
     constructor() {
-        super("EscenaUno");
+        super("EscenaGameplay");
     }
 
     init() {
@@ -24,8 +24,7 @@ export default class Escena extends Phaser.Scene {
         this.puntosPorRoca = 100; // Puntos obtenidos al destruir una roca normal.
         this.oroPorOroca = 100; // Oro obtenido al destruir una oroca.
 
-        // Control para evitar múltiples explosiones al presionar rápidamente la tecla.
-        this.explosionActiva = false;
+        this.AnimacionesdePuntosPendientes = 0; // Contador de animaciones de puntos pendientes.
 
         // Configuración para la generación de elementos en el mapa.
         this.configuracionGeneracion = {
@@ -256,7 +255,7 @@ export default class Escena extends Phaser.Scene {
 
 // --- Event Listener para la Detonación de la Bomba ---
 // un event listener, espera a que ocurra algo (en este caso, una tecla presionada) para ejecutar una función.
-        this.teclasPersonalizadas.ESPACIO.on('down', this.manejarDetonacionBomba, this);
+        this.teclasPersonalizadas.ESPACIO.on('down', this.crearExplosion, this);
     }
 
     update() {
@@ -528,18 +527,24 @@ export default class Escena extends Phaser.Scene {
 
 // --- Funciones de Eventos y Mecánicas del Juego ---
 
-    // Maneja la detonación de la bomba (explosión).
-    manejarDetonacionBomba() {
-        // Si ya hay una explosión activa, se ignora la nueva solicitud para evitar múltiples explosiones.
-        if (this.explosionActiva) {
-            return;
-        }
-        this.explosionActiva = true; // Marca que hay una explosión activa.
-        this.crearExplosion(); // Llama a la función para crear el efecto de explosión.
-    }
-
-    // Crea el sprite de la explosión y gestiona su animación y efectos.
+     // Crea el sprite de la explosión y gestiona su animación y efectos.
     crearExplosion() {
+        // parar que la mecha no se queme mientras se crea la explosión.
+        this.time.removeAllEvents ();
+
+        // eliminar el jugador
+        this.personaje.setVisible(false); // Oculta el sprite del personaje.
+        this.personaje.body.enable = false; // Desactiva el cuerpo de física del personaje
+
+        // desabilitar todas las teclas de control del jugador.
+        this.cursores.enabled = false; // Desactiva las teclas de flecha.
+        // Desactiva todas las teclas personalizadas.
+        Object.values(this.teclasPersonalizadas).forEach(key => {
+            if (key && typeof key.enabled !== "undefined") {
+                key.enabled = false;
+            }
+        });
+
         // Obtiene la posición actual del personaje (donde se detonó la bomba).
         const xPersonaje = this.personaje.x;
         const yPersonaje = this.personaje.y;
@@ -560,7 +565,8 @@ export default class Escena extends Phaser.Scene {
             duration: 500, // Duración total de la animación en milisegundos.
             onComplete: () => {
                 explosionSprite.destroy(); // Destruye el sprite de la explosión una vez que la animación termina.
-                this.explosionActiva = false; // Permite que se pueda detonar una nueva bomba.
+                this.SpritedeExplosionDestruido = true; // Marca que el sprite de la explosión ha sido destruido.
+                this.verificarFinDeJuego(); // Verifica si el juego debe reiniciarse.
             }
         });
     }
@@ -584,6 +590,9 @@ export default class Escena extends Phaser.Scene {
             }
         }
 
+        // Incrementa el contador de animaciones pendientes.
+        this.AnimacionesdePuntosPendientes++;
+
         if (esOroca) {
             // Si es una oroca, suma puntos y oro.
             this.puntosCuotaActuales += this.puntosPorRoca;
@@ -595,10 +604,14 @@ export default class Escena extends Phaser.Scene {
             if (indiceOroca !== -1) {
                 this.orocas.splice(indiceOroca, 1);
             }
+            // Muestra la animación de puntos y oro.
+            this.MostrarAnimacionesdeTexto(rocaGolpeada.x, rocaGolpeada.y, this.puntosPorRoca, this.oroPorOroca);
         } else {
             // Si es una roca normal, solo suma puntos.
             this.puntosCuotaActuales += this.puntosPorRoca;
             console.log(`¡Roca destruida! Puntos: ${this.puntosCuotaActuales}`);
+            // Muestra la animación de puntos.
+            this.MostrarAnimacionesdeTexto(rocaGolpeada.x, rocaGolpeada.y, this.puntosPorRoca);
         }
 
         // Actualiza el texto de los puntos actuales en la UI.
@@ -613,10 +626,68 @@ export default class Escena extends Phaser.Scene {
         rocaGolpeada.destroy();
     }
 
+    // Muestra una animación de texto flotante para los puntos y/o oro.
+    MostrarAnimacionesdeTexto(x, y, Posiciones, Oro = 0) {
+        // Animación de puntos
+        let PosicionesdeTexto = this.add.text(x, y, `+${Posiciones}`, {
+            fontSize: '35px',
+            fill: '#42DED9',
+            fontFamily: 'Impact',
+        }).setOrigin(0.5).setDepth(32); // Asegura que esté por encima de todo.
+
+        this.tweens.add({
+            targets: PosicionesdeTexto,
+            y: PosicionesdeTexto.y - 50, // Se mueve hacia arriba.
+            alpha: 0, // Se desvanece.
+            duration: 1000, // Duración de la animación.
+            ease: 'Power1',
+            onComplete: () => {
+                PosicionesdeTexto.destroy();
+                this.AnimacionesdePuntosPendientes--; // Decrementa el contador al finalizar la animación.
+                this.verificarFinDeJuego(); // Verifica si el juego debe reiniciarse.
+            }
+        });
+
+        // Animación de oro (si aplica)
+        if (Oro > 0) {
+            // Se posiciona el texto de oro un poco más abajo del texto de puntos.
+            let OroY = y + 30;
+
+            // Crea el icono de oro.
+            let IconodeOro = this.add.image(x - 90, OroY, "iconoOro").setOrigin(0.5).setScale(1.5).setDepth(32);
+            IconodeOro.setTintFill(0xFFD700); // Aplica un relleno dorado sólido al icono de oro.
+
+            // Crea el texto de oro.
+            let TextodeOro = this.add.text(x + 10, OroY, `+${Oro}`, {
+                fontSize: '35px',
+                fill: '#FFD700', // Color dorado.
+                fontFamily: 'Impact',
+            }).setOrigin(0.5).setDepth(32);
+
+            // Agrupa el icono y el texto de oro para animarlos juntos.
+            let GrupodeOro = this.add.container(0, 0, [IconodeOro, TextodeOro]);
+
+            this.tweens.add({
+                targets: GrupodeOro,
+                y: GrupodeOro.y - 50, // Se mueve hacia arriba.
+                alpha: 0, // Se desvanece.
+                duration: 1000, // Duración de la animación.
+                ease: 'Power1',
+                onComplete: () => {
+                    GrupodeOro.destroy(); // Destruye el grupo (icono y texto).
+                }
+            });
+        }
+    }
+
     // Maneja la colisión del personaje con un sprite de fuego.
     manejarContactoFuego(personaje, fuegoTocado) {
         console.log("¡El personaje ha tocado el fuego!");
         fuegoTocado.destroy(); // Elimina el sprite de fuego al ser tocado.
+        
+        if (this.temporizadorAcelerarConsumo) {
+            this.temporizadorAcelerarConsumo.destroy();
+        }
 
         this.mechaAcelerada = true; // Activa el modo de consumo acelerado de la mecha.
 
@@ -657,6 +728,14 @@ export default class Escena extends Phaser.Scene {
             // Detiene todos los eventos de tiempo para evitar que sigan ejecutándose.
             this.time.removeAllEvents();
             this.scene.restart(); // Reinicia la escena (esto es de momento, en algun momento llevara a "Fin de Juego").
+        }
+    }
+
+    verificarFinDeJuego() {
+    // Si la explosión principal ha terminado Y no hay más animaciones de puntos pendientes, reinicia la escena.
+        if (this.AnimacionesdePuntosPendientes === 0 && this.SpritedeExplosionDestruido) {
+            console.log("Todas las animaciones de puntos han terminado y la explosión ha finalizado. Reiniciando escena...");
+            this.scene.restart();
         }
     }
 }
