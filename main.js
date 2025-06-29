@@ -17,8 +17,8 @@ const config = {
       debug: true,
     },
   },
-    //scene: [EscenaMaestra, EscenaGameplay],
-    scene: [Menus],
+    scene: [EscenaMaestra, EscenaGameplay],
+    // scene: [Menus],
 };
 
 window.game = new Phaser.Game(config);
