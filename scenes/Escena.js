@@ -3,430 +3,660 @@ export default class Escena extends Phaser.Scene {
         super("EscenaUno");
     }
 
-    // --- CONFIGURACIÓN DE VARIABLES GLOBALES Y DE GENERACIÓN ---
     init() {
-        // Variables de juego
+        // Variables de juego.
         this.physics.world.drawDebug = false;
-        this.Velocidad = 600;
-        this.VpuntosActuales = 0;
-        this.Vpuntoscuota = 0;
-        this.Vcantidadoro = 0;
-        this.puntaje = 0;
-        this.VDiasRestantes = 2;
-        this.longitudMecha = 100; // Inicializamos la mecha al 100%
-        this.mechaAccelerated = false; // Nueva variable para controlar la aceleración de la mecha
-        this.TemporizadorAcelerarConsumo = null; // Para guardar el timer de aceleración
+        this.velocidadPersonaje = 600;
 
-        // Variables de generación de objetos
-        this.configGeneracion = {
-            cantidadGruposRocas: 9, // Grupos de rocas 3x3
-            cantidadTotalRocas: 20, // Total de rocas a distribuir
-            probabilidadOroca: 0.2, // Chance de que una roca sea oroca
-            probabilidadOrocaOculta: 0.8, // Chance de que la oroca esté oculta
-            cantidadAgujeros: 6, // Agujeros a generar
-            cantidadFuegos: 5 // Fuegos a generar
+        // Variables relacionadas con la puntuación y el oro.
+        this.puntosCuotaActuales = 0;
+        this.puntosObjetivoCuota = 0;
+        this.DiasRestantesObjetivoCuota = 2;
+        this.cantidadOro = 0;
+        this.puntajeTotal = 0;
+
+        // Variables de la mecha de la bomba.
+        this.longitudMecha = 100; // Longitud inicial de la mecha (en porcentaje, 0-100).
+        this.mechaAcelerada = false; // Indica si el consumo de la mecha está acelerado (por tocar fuego).
+        this.temporizadorAcelerarConsumo = null; // Referencia al temporizador que controla la aceleración de la mecha.
+
+        // Puntuaciones y valores de oro por destruir objetos.
+        this.puntosPorRoca = 100; // Puntos obtenidos al destruir una roca normal.
+        this.oroPorOroca = 100; // Oro obtenido al destruir una oroca.
+
+        // Control para evitar múltiples explosiones al presionar rápidamente la tecla.
+        this.explosionActiva = false;
+
+        // Configuración para la generación de elementos en el mapa.
+        this.configuracionGeneracion = {
+            cantidadAgujeros: 6, // Cantidad de agujeros a generar.
+            cantidadFuegos: 5, // Cantidad de fuegos a generar.
+            cantidadGruposRocas: 9, // Número de grupos 3x3 para distribuir rocas.
+            cantidadTotalRocas: 20, // Cantidad total de rocas a generar.
+
+            // Probabilidades para la generación de orocas.
+            probabilidadOroca: 0.2, // Probabilidad de que una roca sea una oroca (50/50).
+            probabilidadOrocaOculta: 0.8 // Probabilidad de que una oroca sea inicialmente oculta (50/50).
         };
 
-        // Teclas de control
-        this.cursors = this.input.keyboard.createCursorKeys();
-        this.teclas = this.input.keyboard.addKeys({
+        // Configuración de las teclas de control del jugador.
+        this.cursores = this.input.keyboard.createCursorKeys(); // Teclas de flecha.
+        this.teclasPersonalizadas = this.input.keyboard.addKeys({
+
+            // Teclas de movimiento WASD.
             "W": Phaser.Input.Keyboard.KeyCodes.W,
             "A": Phaser.Input.Keyboard.KeyCodes.A,
             "S": Phaser.Input.Keyboard.KeyCodes.S,
             "D": Phaser.Input.Keyboard.KeyCodes.D,
-            "ESPACIO": Phaser.Input.Keyboard.KeyCodes.SPACE,
-            "E": Phaser.Input.Keyboard.KeyCodes.E,
-            "Z": Phaser.Input.Keyboard.KeyCodes.Z,
-            "P": Phaser.Input.Keyboard.KeyCodes.P,
-            "R": Phaser.Input.Keyboard.KeyCodes.R,
+
+            // Teclas de acción.
+            "ESPACIO": Phaser.Input.Keyboard.KeyCodes.SPACE, // Para detonar la bomba
+            "E": Phaser.Input.Keyboard.KeyCodes.E, // Para usar la habilidad XRAY
+            "Z": Phaser.Input.Keyboard.KeyCodes.Z, // Alternativa para usar XRAY
+            "Q": Phaser.Input.Keyboard.KeyCodes.Q, // Para extender la mecha
+            "X": Phaser.Input.Keyboard.KeyCodes.X, // Alternativa para extender la mecha
+
+            // Teclas de prueba y debug.
+            "F": Phaser.Input.Keyboard.KeyCodes.F, // Tecla de prueba para sumar oro
+            "P": Phaser.Input.Keyboard.KeyCodes.P, // Para activar/desactivar el modo de debug
+            "R": Phaser.Input.Keyboard.KeyCodes.R, // Para reiniciar la escena
         });
     }
 
-    // --- CARGA DE RECURSOS ---
     preload() {
-        // Mapas y tilesets
-        this.load.tilemapTiledJSON("map", "public/assets/tilemap/map.json");
-        this.load.image("tileset", "public/assets/texture.png");
+        // Carga del archivo JSON del tilemap y la imagen del tileset.
+        this.load.tilemapTiledJSON("mapaPrincipal", "public/assets/tilemap/map.json");
+        this.load.image("imagenTileset", "public/assets/texture.svg");
 
-        // Imágenes y sprites
-        this.load.image("Gameplay", "./public/assets/Gameplay.svg");
-        this.load.image("oro", "./public/assets/oro.svg");
-        this.load.image("Mecha", "./public/assets/Mecha.svg");
-        this.load.image("Doble_Bomba", "./public/assets/Doble_Bomba.svg");
-        this.load.image("Mega_Bomba", "./public/assets/Mega_Bomba.svg");
-        this.load.image("TNT", "./public/assets/TNT.svg");
-        this.load.image("XRAY", "./public/assets/XRAY.svg");
-        this.load.image("Extender_Cuerda", "./public/assets/Extender_Cuerda.svg");
-        this.load.image("Reparar_Cuerda", "./public/assets/Reparar_Cuerda.svg");
+        // Carga de imágenes individuales para la interfaz de usuario y elementos del juego.
+        this.load.image("interfazJuego", "./public/assets/Gameplay_2.svg");
+        this.load.image("fondoJuego", "./public/assets/fondo.svg");
+        this.load.image("iconoOro", "./public/assets/oro.svg");
+        this.load.image("imagenMecha", "./public/assets/Mecha.svg");
+        this.load.image("bombaDoble", "./public/assets/Doble_Bomba.svg");
+        this.load.image("megaBomba", "./public/assets/Mega_Bomba.svg");
+        this.load.image("tnt", "./public/assets/TNT.svg");
+        this.load.image("habilidadXRAY", "./public/assets/XRAY.svg");
+        this.load.image("extenderCuerda", "./public/assets/Extender_Cuerda.svg");
+        this.load.image("repararCuerda", "./public/assets/Reparar_Cuerda.svg");
+        this.load.image("spriteExplosion", "./public/assets/Explosion.svg");
 
-        // Spritesheets
-        this.load.spritesheet("fuego", "public/assets/texture.png", {
+        // Carga de spritesheets para animaciones o múltiples frames.
+        // Spritesheet para la animación del fuego.
+        this.load.spritesheet("spritesFuego", "public/assets/texture.svg", {
             frameWidth: 60,
             frameHeight: 60,
-            startFrame: 3,
+            startFrame: 3, // El frame 3 y 4 son para la animación del fuego.
             endFrame: 4,
         });
-        this.load.spritesheet("tileset_sprites", "public/assets/texture.png", {
+        // Spritesheet general para tiles del juego (rocas, personaje, agujeros).
+        this.load.spritesheet("spritesTileset", "public/assets/texture.svg", {
             frameWidth: 60,
             frameHeight: 60,
         });
     }
 
-    // --- CREACIÓN DE LA ESCENA ---
     create() {
-        // --- UI e imágenes de fondo ---
-        const Centrox = this.cameras.main.width / 2;
-        const CentroY = this.cameras.main.height / 2;
-        this.add.image(Centrox, CentroY, "Gameplay").setOrigin(0.5);
+        // Calcula el centro de la cámara para posicionar elementos de fondo.
+        const centroX = this.cameras.main.width / 2;
+        const centroY = this.cameras.main.height / 2;
 
-        // Crear la imagen de la mecha y guardarla en una propiedad para poder manipularla
-        this.ImagenMecha = this.add.image(1350, 153, "Mecha");
+// --- Elementos de UI y Fondo ---
+        // Se añaden primero para que estén en la parte inferior de las capas.
+        this.add.image(centroX, centroY, "fondoJuego").setOrigin(0.5).setDepth(0);
+        this.add.image(centroX, centroY, "interfazJuego").setOrigin(0.5).setDepth(30);
 
-        // Llamar a la función para actualizar el recorte de la mecha inicialmente
-        this.UpdateQuemarMecha();
+        // Imagen de la mecha/mecanica de vida.
+        this.imagenMecha = this.add.image(1350, 153, "imagenMecha").setDepth(30);
+        this.actualizarRecorteMecha(); // Llama a la función para establecer el recorte inicial de la mecha.
 
-        // Crear un evento de tiempo que se repita cada 200 ms (0.2 segundos) para el consumo normal
+        // Configura un temporizador para quemar la mecha regularmente.
         this.time.addEvent({
-            delay: 200, // 200 milisegundos
-            callback: this.QuemarMecha,
-            callbackScope: this,
-            loop: true // Repetir indefinidamente
+            delay: 200, // Cada 200 milisegundos (0.2 segundos).
+            callback: this.quemarMecha, // Llama a la función que decrementa la mecha.
+            callbackScope: this, // Contexto de la función (this se refiere a la escena).
+            loop: true // Se repite indefinidamente.
         });
 
-        this.add.image(250, 570, "oro").setOrigin(0.5).setScale(1.5);
+        // Icono de oro en la interfaz.
+        this.add.image(250, 570, "iconoOro").setOrigin(0.5).setScale(1.5).setDepth(30);
 
-        // --- UI DE TEXTO ---
-        this.cuota = this.add.text(258, 200, "CUOTA", {
+// --- Textos de la Interfaz de Usuario (UI) ---
+        // Se crean los elementos de texto para mostrar información al jugador.
+        this.textoCuota = this.add.text(258, 200, "CUOTA", {
             fontSize: "35px",
             fill: "#42DED9",
             fontFamily: "Impact"
-        }).setDepth(10);
+        }).setDepth(30);
 
-        this.PuntosActuales = this.add.text(200, 270, `${this.VpuntosActuales} /`.padStart(12, "0"), {
+        this.textopuntosCuotaActuales = this.add.text(200, 270, `${this.puntosCuotaActuales} /`.padStart(12, "0"), {
             fontSize: "35px",
             fill: "#42DED9",
             fontFamily: "Impact"
-        }).setDepth(10);
+        }).setDepth(30);
 
-        this.Puntoscuota = this.add.text(200, 340, `${this.Vpuntoscuota}`.padStart(10, "0"), {
+        this.textopuntosObjetivoCuota = this.add.text(200, 340, `${this.puntosObjetivoCuota}`.padStart(10, "0"), {
             fontSize: "35px",
             fill: "#42DED9",
             fontFamily: "Impact"
-        }).setDepth(10);
+        }).setDepth(30);
 
-        this.DiasRestantes = this.add.text(480, 240, `${this.VDiasRestantes}`.padStart(2, "0"), {
+        this.texto = this.add.text(480, 240, `${this.DiasRestantesObjetivoCuota}`.padStart(2, "0"), {
             fontSize: "80px",
             fill: "#42DED9",
             fontFamily: "Impact"
-        }).setDepth(10);
+        }).setDepth(30);
 
-        this.CantidadOro = this.add.text(368, 550, `${this.Vcantidadoro}`.padStart(10, "0"), {
+        this.textoCantidadOro = this.add.text(368, 550, `${this.cantidadOro}`.padStart(10, "0"), {
             fontSize: "35px",
             fill: "#42DED9",
             fontFamily: "Impact"
-        }).setDepth(10);
+        }).setDepth(30);
 
-        this.Puntos = this.add.text(202, 455, `PUNTOS:          ` + `${this.puntaje}`.padStart(10, "0"), {
+        this.textoPuntosTotal = this.add.text(202, 455, `PUNTOS:        ` + `${this.puntajeTotal}`.padStart(10, "0"), {
             fontSize: "35px",
             fill: "#42DED9",
             fontFamily: "Impact"
-        }).setDepth(10);
+        }).setDepth(30);
 
-        // --- ITEMS EN UI ---
-        this.items = [
-            {
-                name: "item1",
-                x: 300,
-                y: 780,
-                tipo: ""
-            },
-            {
-                name: "item2",
-                x: 480,
-                y: 780,
-                tipo: ""
-            },
-            {
-                name: "item3",
-                x: 300,
-                y: 960,
-                tipo: ""
-            },
-            {
-                name: "item4",
-                x: 480,
-                y: 960,
-                tipo: ""
-            },
-        ];
-        this.items.forEach(item => {
-            this.add.image(item.x, item.y, item.name).setOrigin(0.5).setScale(0.5);
-        });
+// --- Gráfico para Tachar la Habilidad XRAY ---
+        // Este gráfico se usa para indicar visualmente que la habilidad XRAY no está disponible.
+        this.graficoTachadoXRAY = this.add.graphics();
+        this.graficoTachadoXRAY.fillStyle(0x42ded9, 1); // Color #42DED9.
+        // Posición y tamaño del rectángulo que simula el tachado.
+        this.graficoTachadoXRAY.fillRect(185, 740, 410, 10); // x, y, ancho, alto.
+        this.graficoTachadoXRAY.setDepth(31); // Asegura que esté por encima de otros elementos de la UI.
+        this.graficoTachadoXRAY.setVisible(false); // Inicialmente oculto.
 
-        // --- MAPA Y CAPAS ---
-        const map = this.make.tilemap({ key: "map" });
-        const tileset = map.addTilesetImage("tileset", "tileset");
-        const CBarrera = map.createLayer("Barrera", tileset, 0, 0);
-        const CRocas = map.createLayer("Rocas", tileset, 0, 0);
-        const CAgujeros = map.createLayer("Agujeros", tileset, 0, 0);
-        const CFuegos = map.createLayer("fuegos", tileset, 0, 0);
+// --- Configuración del Mapa y Capas ---
+        // Se carga el tilemap y se crean las capas de tiles.
+        const mapa = this.make.tilemap({ key: "mapaPrincipal" });
+        const tileset = mapa.addTilesetImage("tileset", "imagenTileset");
 
-        // --- OBTENER PROPIEDADES DE TILES ---
-        const tilesetData = map.tilesets[0];
-        const tileProps = tilesetData.tileProperties || {};
+        // Capas del tilemap.
+        // 'capaBarrera' es una capa de colisión, que ademas indica donde no pueden spawnear los objetos, 'capaRocas' contendrá las rocas a destruir.
+        this.capaBarrera = mapa.createLayer("Barrera", tileset, 0, 0);
+        this.capaRocas = mapa.createLayer("Rocas", tileset, 0, 0); // Guardar referencia para manipular rocas.
+        this.capaAgujeros = mapa.createLayer("Agujeros", tileset, 0, 0);
+        this.capaFuegos = mapa.createLayer("fuegos", tileset, 0, 0);
 
-        // --- POSICIONES VÁLIDAS PARA GENERACIÓN ---
+// --- Propiedades de los Tiles ---
+        /* Se obtienen las propiedades de los tiles del tileset, 
+        útiles para determinar si una posición es válida para la generación de objetos.*/
+        const datosTileset = mapa.tilesets[0];
+        const propiedadesTiles = datosTileset.tileProperties || {};
+
+ // --- Generación de Posiciones Válidas para Objetos ---
+        // Se crea un array con todas las coordenadas (x, y) de los tiles donde se pueden generar objetos.
         let posicionesValidas = [];
-        for (let y = 0; y < map.height; y++) {
-            for (let x = 0; x < map.width; x++) {
-                const tile = CBarrera.getTileAt(x, y);
+        for (let y = 0; y < mapa.height; y++) {
+            for (let x = 0; x < mapa.width; x++) {
+                const tile = this.capaBarrera.getTileAt(x, y);
                 let esValida = true;
-                if (tile && tile.index === 1) {
-                    const props = tileProps[tile.index - tilesetData.firstgid] || {};
+                // Si el tile es una barrera y tiene la propiedad 'nospawn' a true, no es válida.
+                if (tile && tile.index === 1) { // el índice 1 es el tile de barrera.
+                    const props = propiedadesTiles[tile.index - datosTileset.firstgid] || {};
                     if (props.nospawn === true) esValida = false;
                 }
                 if (esValida) posicionesValidas.push({ x, y });
             }
         }
 
-        // --- FUNCIÓN PARA VERIFICAR POSICIÓN VÁLIDA ---
-        const esPosicionValida = (x, y) => {
-            if (x < 0 || y < 0 || x >= map.width || y >= map.height) return false;
-            const tile = CBarrera.getTileAt(x, y);
-            if (tile && tile.index === 1) {
-                const props = tileProps[tile.index - tilesetData.firstgid] || {};
+// --- Función para Verificar si una Posición es Válida para Colocar un Objeto ---
+        // Esta función se utiliza para asegurar que los objetos no se generen en lugares no deseados.
+        const esPosicionValidaParaGeneracion = (x, y) => {
+            // Verifica límites del mapa.
+            if (x < 0 || y < 0 || x >= mapa.width || y >= mapa.height) return false;
+            // Verifica si hay una barrera que prohíba el spawn.
+            const tileBarrera = this.capaBarrera.getTileAt(x, y);
+            if (tileBarrera && tileBarrera.index === 1) {
+                const props = propiedadesTiles[tileBarrera.index - datosTileset.firstgid] || {};
                 if (props.nospawn === true) return false;
             }
-            if (CRocas.getTileAt(x, y)) return false;
-            if (CAgujeros.getTileAt(x, y)) return false;
-            if (CFuegos.getTileAt(x, y)) return false;
+            // Verifica si ya hay una roca, agujero o fuego en esa posición.
+            if (this.capaRocas.getTileAt(x, y)) return false;
+            if (this.capaAgujeros.getTileAt(x, y)) return false;
+            if (this.capaFuegos.getTileAt(x, y)) return false;
             return true;
         };
 
-        // --- GENERACIÓN DE ROCAS Y OROCAs ---
+// --- Generación de Rocas y Orocas ---
+        // grupo para las rocas, para añadirles colision despues.
         this.grupoRocas = this.physics.add.staticGroup();
-        this.orocas = [];
-        let usados = new Set();
-        let rocasRestantes = this.configGeneracion.cantidadTotalRocas;
-        let cantidadGrupos = this.configGeneracion.cantidadGruposRocas;
+        this.orocas = []; // Array para almacenar las orocas generadas, incluyendo su estado.
+        this.generarRocasYOrocas(mapa, esPosicionValidaParaGeneracion, posicionesValidas, propiedadesTiles, datosTileset);
 
-        Phaser.Utils.Array.Shuffle(posicionesValidas);
+// --- Generación de Agujeros ---
+        this.grupoAgujeros = this.physics.add.staticGroup();
+        this.generarAgujeros(mapa, esPosicionValidaParaGeneracion, posicionesValidas);
 
-        for (let g = 0; g < cantidadGrupos && posicionesValidas.length > 0 && rocasRestantes > 0; g++) {
-            let centro;
+// --- Generación de Fuegos ---
+        this.grupoFuegos = this.physics.add.group();
+        this.generarFuegos(mapa, esPosicionValidaParaGeneracion, posicionesValidas);
+
+// --- Creación del Personaje ---
+        // Se busca el punto de spawn del personaje definido en el tilemap.
+        const puntoSpawnPersonaje = mapa.findObject("Objetos", (obj) => obj.name === "bombaspawn");
+        this.personaje = this.physics.add.sprite(
+            puntoSpawnPersonaje.x,
+            puntoSpawnPersonaje.y,
+            "spritesTileset",
+            2 // Frame del sprite del personaje.
+        );
+        this.personaje.setCollideWorldBounds(true); // Asegura que el personaje no salga de los límites del mundo.
+
+// --- Configuración de Colisiones y Solapamientos ---
+        // como creamos los grupos, ahora podemos asignarles colisiones entre si :D
+        this.capaBarrera.setCollisionByProperty({ colisionable: true }); // Las tiles con la propiedad 'colisionable: true' serán colisionables, duh.
+        this.physics.add.collider(this.personaje, this.capaBarrera); // Colisión entre el personaje y las barreras.
+        this.physics.add.collider(this.personaje, this.grupoRocas); // Colisión entre el personaje y las rocas.
+        this.physics.add.collider(this.personaje, this.grupoAgujeros); // Colisión entre el personaje y los agujeros.
+        // overlap entre el personaje y los fuegos. llamará a la función 'manejarContactoFuego'.
+        this.physics.add.overlap(this.personaje, this.grupoFuegos, this.manejarContactoFuego, null, this);
+
+// --- Event Listener para la Detonación de la Bomba ---
+// un event listener, espera a que ocurra algo (en este caso, una tecla presionada) para ejecutar una función.
+        this.teclasPersonalizadas.ESPACIO.on('down', this.manejarDetonacionBomba, this);
+    }
+
+    update() {
+        // Maneja el movimiento del personaje según las teclas presionadas.
+        this.manejarMovimientoPersonaje();
+
+        // Maneja la activación/desactivación del modo de depuración y el reinicio del juego.
+        this.manejarDebugReiniciar();
+
+        // Maneja la lógica para la habilidad XRAY (revelar orocas ocultas).
+        this.manejarHabilidadXRAY();
+
+        // Maneja la lógica para la habilidad de extender la mecha.
+        this.manejarHabilidadExtenderMecha();
+
+        // Función de prueba para sumar oro (se activa con la tecla 'F').
+        this.sumarOroPrueba();
+    }
+
+// --- Métodos de Generación de Objetos ---
+
+    // Genera rocas normales y orocas (rocas con oro) en el mapa.
+    generarRocasYOrocas(mapa, esPosicionValidaParaGeneracion, posicionesValidasOriginales, propiedadesTiles, datosTileset) {
+        let posicionesDisponibles = [...posicionesValidasOriginales]; // Copia para no modificar el original.
+        let posicionesUsadas = new Set(); // Para evitar generar objetos en la misma casilla.
+        let rocasRestantes = this.configuracionGeneracion.cantidadTotalRocas;
+        let cantidadGrupos = this.configuracionGeneracion.cantidadGruposRocas;
+
+        Phaser.Utils.Array.Shuffle(posicionesDisponibles); // Aleatoriza las posiciones disponibles.
+
+        // Bucle para generar grupos de rocas.
+        for (let g = 0; g < cantidadGrupos && posicionesDisponibles.length > 0 && rocasRestantes > 0; g++) {
+            let centroGrupo;
+            // Busca una posición central válida para el grupo de rocas.
             do {
-                centro = Phaser.Utils.Array.RemoveRandomElement(posicionesValidas);
-            } while (centro && usados.has(`${centro.x},${centro.y}`));
-            if (!centro) break;
+                centroGrupo = Phaser.Utils.Array.RemoveRandomElement(posicionesDisponibles);
+            } while (centroGrupo && posicionesUsadas.has(`${centroGrupo.x},${centroGrupo.y}`));
+            if (!centroGrupo) break; // Si no hay más posiciones, sale del bucle.
 
+            // Calcula la cantidad de rocas para este grupo, asegurando que se cumpla el total.
             let gruposFaltantes = cantidadGrupos - g;
             let maxRocasEsteGrupo = Math.min(3, rocasRestantes - (gruposFaltantes - 1));
             let minRocasEsteGrupo = Math.max(1, rocasRestantes - (gruposFaltantes - 1) * 3);
             let cantidadRocasGrupo = Phaser.Math.Between(minRocasEsteGrupo, maxRocasEsteGrupo);
 
-            let posibles = [];
+            // Define las posiciones posibles alrededor del centro del grupo (cuadrícula 3x3).
+            let posicionesPosiblesEnGrupo = [];
             for (let dy = -1; dy <= 1; dy++) {
                 for (let dx = -1; dx <= 1; dx++) {
-                    posibles.push({ x: centro.x + dx, y: centro.y + dy });
+                    posicionesPosiblesEnGrupo.push({ x: centroGrupo.x + dx, y: centroGrupo.y + dy });
                 }
             }
-            Phaser.Utils.Array.Shuffle(posibles);
+            Phaser.Utils.Array.Shuffle(posicionesPosiblesEnGrupo); // Aleatoriza las posiciones dentro del grupo.
 
-            let rocasColocadas = 0;
-            for (let i = 0; i < posibles.length && rocasColocadas < cantidadRocasGrupo && rocasRestantes > 0; i++) {
-                const { x, y } = posibles[i];
-                if (esPosicionValida(x, y)) {
-                    let esOroca = Math.random() < this.configGeneracion.probabilidadOroca;
-                    let oculta = esOroca ? Math.random() < this.configGeneracion.probabilidadOrocaOculta : false;
-                    let frame = (esOroca && !oculta) ? 5 : 7;
+            let rocasColocadasEnGrupo = 0;
+            // Itera sobre las posiciones posibles para colocar rocas.
+            for (let i = 0; i < posicionesPosiblesEnGrupo.length && rocasColocadasEnGrupo < cantidadRocasGrupo && rocasRestantes > 0; i++) {
+                const { x, y } = posicionesPosiblesEnGrupo[i];
+                // Si la posición es válida y no ha sido usada.
+                if (esPosicionValidaParaGeneracion(x, y) && !posicionesUsadas.has(`${x},${y}`)) {
+                    let esOroca = Math.random() < this.configuracionGeneracion.probabilidadOroca;
+                    let oculta = esOroca ? Math.random() < this.configuracionGeneracion.probabilidadOrocaOculta : false;
+                    // El frame 5 es para oroca visible, el 7 para roca normal/oroca oculta.
+                    let frameInicial = (esOroca && !oculta) ? 5 : 7;
 
-                    CRocas.putTileAt(7, x, y);
-                    usados.add(`${x},${y}`);
+                    // Coloca un tile visual de roca en la capa de rocas del tilemap.
+                    this.capaRocas.putTileAt(7, x, y);
+                    posicionesUsadas.add(`${x},${y}`); // Marca la posición como usada.
 
-                    const worldXY = map.tileToWorldXY(x, y);
-                    let sprite = this.grupoRocas.create(
-                        worldXY.x + map.tileWidth / 2,
-                        worldXY.y + map.tileHeight / 2,
-                        "tileset_sprites",
-                        frame
-                    ).setOrigin(0.5).refreshBody();
+                    // Convierte las coordenadas del tile a coordenadas del mundo.
+                    const coordenadasMundo = mapa.tileToWorldXY(x, y);
+                    // Crea un sprite de física estática para la roca.
+                    let spriteRoca = this.grupoRocas.create(
+                        coordenadasMundo.x + mapa.tileWidth / 2,
+                        coordenadasMundo.y + mapa.tileHeight / 2,
+                        "spritesTileset",
+                        frameInicial
+                    ).setOrigin(0.5).refreshBody(); // Centra el origen y actualiza el cuerpo de física.
+
+                    // Almacena las coordenadas del tile en el sprite para fácil referencia al destruirlo.
+                    spriteRoca.tileX = x;
+                    spriteRoca.tileY = y;
 
                     if (esOroca) {
-                        this.orocas.push({ x, y, sprite, oculta });
+                        // Si es una oroca, la añade al array de orocas con su estado.
+                        this.orocas.push({ x, y, sprite: spriteRoca, oculta, revelada: !oculta });
                     }
 
-                    rocasColocadas++;
+                    rocasColocadasEnGrupo++;
                     rocasRestantes--;
                 }
             }
         }
+    }
 
-        // --- GENERACIÓN DE AGUJEROS ---
-        this.grupoAgujeros = this.physics.add.staticGroup();
-        let posicionesAgujero = Phaser.Utils.Array.Shuffle([...posicionesValidas]);
-        let usadosAgujero = new Set();
-        let cantidadAgujeros = this.configGeneracion.cantidadAgujeros;
+    // Genera agujeros en el mapa.
+    generarAgujeros(mapa, esPosicionValidaParaGeneracion, posicionesValidasOriginales) {
+        let posicionesDisponibles = [...posicionesValidasOriginales];
+        let posicionesUsadas = new Set();
+        let cantidadAgujeros = this.configuracionGeneracion.cantidadAgujeros;
 
-        for (let i = 0; i < cantidadAgujeros && posicionesAgujero.length > 0; i++) {
-            let pos;
+        Phaser.Utils.Array.Shuffle(posicionesDisponibles);
+
+        for (let i = 0; i < cantidadAgujeros && posicionesDisponibles.length > 0; i++) {
+            let posicionAgujero;
             do {
-                pos = Phaser.Utils.Array.RemoveRandomElement(posicionesAgujero);
-            } while (pos && usadosAgujero.has(`${pos.x},${pos.y}`));
-            if (!pos) break;
-            if (esPosicionValida(pos.x, pos.y)) {
-                CAgujeros.putTileAt(1, pos.x, pos.y);
-                usadosAgujero.add(`${pos.x},${pos.y}`);
-                const worldXY = map.tileToWorldXY(pos.x, pos.y);
+                posicionAgujero = Phaser.Utils.Array.RemoveRandomElement(posicionesDisponibles);
+            } while (posicionAgujero && posicionesUsadas.has(`${posicionAgujero.x},${posicionAgujero.y}`));
+            if (!posicionAgujero) break;
+
+            if (esPosicionValidaParaGeneracion(posicionAgujero.x, posicionAgujero.y)) {
+                this.capaAgujeros.putTileAt(1, posicionAgujero.x, posicionAgujero.y); // Coloca el tile visual del agujero.
+                posicionesUsadas.add(`${posicionAgujero.x},${posicionAgujero.y}`);
+
+                const coordenadasMundo = mapa.tileToWorldXY(posicionAgujero.x, posicionAgujero.y);
                 this.grupoAgujeros.create(
-                    worldXY.x + map.tileWidth / 2,
-                    worldXY.y + map.tileHeight / 2,
-                    "tileset_sprites", 1
+                    coordenadasMundo.x + mapa.tileWidth / 2,
+                    coordenadasMundo.y + mapa.tileHeight / 2,
+                    "spritesTileset",
+                    1 // Frame del sprite del agujero.
                 ).setOrigin(0.5).refreshBody();
             }
         }
+    }
 
-        // --- GENERACIÓN DE FUEGOS ---
-        this.grupoFuegos = this.physics.add.group();
-        let posicionesFuego = Phaser.Utils.Array.Shuffle([...posicionesValidas]);
-        let usadosFuego = new Set();
-        let cantidadFuegos = this.configGeneracion.cantidadFuegos;
+    // Genera fuegos en el mapa.
+    generarFuegos(mapa, esPosicionValidaParaGeneracion, posicionesValidasOriginales) {
+        let posicionesDisponibles = [...posicionesValidasOriginales];
+        let posicionesUsadas = new Set();
+        let cantidadFuegos = this.configuracionGeneracion.cantidadFuegos;
 
-        // Animación global del fuego
+        // Crea la animación global del fuego una sola vez.
         this.anims.create({
-            key: "fuegoAnim",
-            frames: this.anims.generateFrameNumbers("fuego", { start: 0, end: 1 }),
+            key: "animacionFuego",
+            frames: this.anims.generateFrameNumbers("spritesFuego", { start: 0, end: 1 }),
             frameRate: 10,
             repeat: -1
         });
 
         let fuegosColocados = 0;
-        while (fuegosColocados < cantidadFuegos && posicionesFuego.length > 0) {
-            let pos = Phaser.Utils.Array.RemoveRandomElement(posicionesFuego);
-            if (!pos) break;
-            if (esPosicionValida(pos.x, pos.y) && !usadosFuego.has(`${pos.x},${pos.y}`)) {
-                CFuegos.putTileAt(1, pos.x, pos.y);
-                usadosFuego.add(`${pos.x},${pos.y}`);
-                const worldXY = map.tileToWorldXY(pos.x, pos.y);
+        while (fuegosColocados < cantidadFuegos && posicionesDisponibles.length > 0) {
+            let posicionFuego = Phaser.Utils.Array.RemoveRandomElement(posicionesDisponibles);
+            if (!posicionFuego) break;
 
-                let fuego = this.grupoFuegos.create(
-                    worldXY.x + map.tileWidth / 2,
-                    worldXY.y + map.tileHeight / 2,
-                    "fuego"
-                ).setOrigin(0.5).setDepth(10);
+            if (esPosicionValidaParaGeneracion(posicionFuego.x, posicionFuego.y) && !posicionesUsadas.has(`${posicionFuego.x},${posicionFuego.y}`)) {
+                this.capaFuegos.putTileAt(1, posicionFuego.x, posicionFuego.y); // Coloca el tile visual del fuego.
+                posicionesUsadas.add(`${posicionFuego.x},${posicionFuego.y}`);
 
-                fuego.anims.play("fuegoAnim", true);
-                fuego.body.immovable = true;
+                const coordenadasMundo = mapa.tileToWorldXY(posicionFuego.x, posicionFuego.y);
+                let spriteFuego = this.grupoFuegos.create(
+                    coordenadasMundo.x + mapa.tileWidth / 2,
+                    coordenadasMundo.y + mapa.tileHeight / 2,
+                    "spritesFuego"
+                ).setOrigin(0.5).setDepth(10); // Ajusta la profundidad para que el fuego esté sobre el mapa.
+
+                spriteFuego.anims.play("animacionFuego", true); // Reproduce la animación del fuego.
+                spriteFuego.body.immovable = true; // Hace que el fuego sea inamovible por colisiones.
 
                 fuegosColocados++;
             }
         }
-
-        // --- CREAR PERSONAJE ---
-        const SpawnPersonaje = map.findObject("Objetos", (obj) => obj.name === "bombaspawn");
-        this.personaje = this.physics.add.sprite(
-            SpawnPersonaje.x,
-            SpawnPersonaje.y,
-            "tileset_sprites", 2
-        );
-
-        // --- COLISIONES ---
-        CBarrera.setCollisionByProperty({ colisionable: true });
-        this.physics.add.collider(this.personaje, CBarrera);
-        this.physics.add.collider(this.personaje, this.grupoRocas);
-        this.physics.add.collider(this.personaje, this.grupoAgujeros);
-        this.physics.add.overlap(this.personaje, this.grupoFuegos, this.tocarfuego, null, this);
-
     }
 
-    // --- UPDATE DEL JUEGO ---
-    update() {
-        // Movimiento del personaje
-        this.personaje.setVelocity(0);
-        if (this.cursors.up.isDown || this.teclas.W.isDown) this.personaje.setVelocityY(-this.Velocidad);
-        if (this.cursors.down.isDown || this.teclas.S.isDown) this.personaje.setVelocityY(this.Velocidad);
-        if (this.cursors.left.isDown || this.teclas.A.isDown) this.personaje.setVelocityX(-this.Velocidad);
-        if (this.cursors.right.isDown || this.teclas.D.isDown) this.personaje.setVelocityX(this.Velocidad);
 
-        // Activar/Desactivar Modo Debug
-        if (Phaser.Input.Keyboard.JustDown(this.teclas.P)) {
+// --- Métodos de Lógica del Juego ---
+
+    // Controla el movimiento del personaje basado en la entrada del teclado.
+    manejarMovimientoPersonaje() {
+        this.personaje.setVelocity(0);
+        // Movimiento vertical.
+        if (this.cursores.up.isDown || this.teclasPersonalizadas.W.isDown) {
+            this.personaje.setVelocityY(-this.velocidadPersonaje);
+        } else if (this.cursores.down.isDown || this.teclasPersonalizadas.S.isDown) {
+            this.personaje.setVelocityY(this.velocidadPersonaje);
+        }
+        // Movimiento horizontal.
+        if (this.cursores.left.isDown || this.teclasPersonalizadas.A.isDown) {
+            this.personaje.setVelocityX(-this.velocidadPersonaje);
+        } else if (this.cursores.right.isDown || this.teclasPersonalizadas.D.isDown) {
+            this.personaje.setVelocityX(this.velocidadPersonaje);
+        }
+    }
+
+    // Debuj y movimiento.
+    manejarDebugReiniciar() {
+        // Activa/desactiva el modo de depuración de físicas con la tecla 'P'.
+        if (Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.P)) {
             this.physics.world.drawDebug = !this.physics.world.drawDebug;
-            this.physics.world.debugGraphic.clear();
+            this.physics.world.debugGraphic.clear(); // Limpia los gráficos de depuración al cambiar el estado.
         }
 
-        // Reiniciar el juego con la tecla R
-        if (Phaser.Input.Keyboard.JustDown(this.teclas.R)) {
+        // Reinicia la escena con la tecla 'R'.
+        if (Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.R)) {
             this.scene.restart();
         }
+    }
 
-        // Alternar visibilidad de orocas ocultas con E
-        if (Phaser.Input.Keyboard.JustDown(this.teclas.E)) {
-            const hayOcultas = this.orocas.some(oroca => oroca.oculta);
-            if (hayOcultas) {
+    // Lógica para la habilidad XRAY: revela orocas ocultas.
+    manejarHabilidadXRAY() {
+        // Se activa con las teclas 'E' o 'Z'.
+        if (Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.E) || Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.Z)) {
+            const costoXRAY = 500;
+            // Verifica si hay orocas ocultas que aún no han sido reveladas.
+            const hayOcultasNoReveladas = this.orocas.some(oroca => oroca.oculta && !oroca.revelada);
+
+            if (this.cantidadOro >= costoXRAY && hayOcultasNoReveladas) {
+                this.cantidadOro -= costoXRAY;
+                this.textoCantidadOro.setText(`${this.cantidadOro}`.padStart(10, "0"));
+                console.log(`Usado XRAY. Oro restante: ${this.cantidadOro}`);
+
+                // Itera sobre todas las orocas para revelar las que están ocultas.
                 this.orocas.forEach(oroca => {
                     if (oroca.oculta) {
-                        oroca.oculta = false;
-                        oroca.sprite.setFrame(5);
+                        oroca.oculta = false; // Ya no está oculta.
+                        oroca.revelada = true; // Marcar como revelada permanentemente.
+                        oroca.sprite.setFrame(5); // Cambia el frame del sprite para mostrar la oroca visible.
                     }
                 });
-            } else {
-                this.orocas.forEach(oroca => {
-                    oroca.oculta = true;
-                    oroca.sprite.setFrame(7);
-                });
+
+                // Después de revelar, verifica si quedan orocas ocultas por revelar.
+                // Si no quedan, muestra el gráfico de tachado para indicar que la habilidad está "agotada".
+                const aunHayOcultasNoReveladas = this.orocas.some(oroca => oroca.oculta && !oroca.revelada);
+                if (!aunHayOcultasNoReveladas) {
+                    this.graficoTachadoXRAY.setVisible(true);
+                    console.log("Todas las orocas ocultas han sido reveladas. XRAY no puede usarse más.");
+                }
+
+            } else if (this.cantidadOro < costoXRAY) {
+                console.log("No tienes suficiente oro para usar XRAY (necesitas 500 de oro).");
+            } else if (!hayOcultasNoReveladas) {
+                console.log("No hay orocas ocultas que revelar.");
+                // Si no hay orocas ocultas, la habilidad XRAY está "agotada" para esta ronda.
+                this.graficoTachadoXRAY.setVisible(true);
             }
         }
     }
 
-    // --- FUNCIÓN PARA MANEJAR COLISIÓN CON FUEGO ---
-    tocarfuego(personaje, fuego) {
-        console.log("¡El personaje ha tocado el fuego!");
-        fuego.destroy(); // Elimina el fuego al tocarlo
+    // Lógica para la habilidad de extender la mecha.
+    manejarHabilidadExtenderMecha() {
+        // Se activa con las teclas 'Q' o 'X'.
+        if (Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.Q) || Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.X)) {
+            const costoExtenderMecha = 1000;
+            const aumentoMecha = 20; // Cantidad en que aumenta la longitud de la mecha.
+            const mechaMaxima = 100; // Longitud máxima de la mecha (100%).
 
-        // Si ya hay un timer de aceleración activo, lo destruimos para evitar múltiples aceleraciones
-        if (this.TemporizadorAcelerarConsumo) {
-            this.TemporizadorAcelerarConsumo.destroy();
+            if (this.cantidadOro >= costoExtenderMecha) {
+                this.cantidadOro -= costoExtenderMecha;
+                this.textoCantidadOro.setText(`${this.cantidadOro}`.padStart(10, "0"));
+                console.log(`Mecha extendida. Oro restante: ${this.cantidadOro}`);
+
+                // Aumenta la longitud de la mecha, sin exceder el máximo.
+                this.longitudMecha = Math.min(this.longitudMecha + aumentoMecha, mechaMaxima);
+                this.actualizarRecorteMecha(); // Actualiza la visualización de la mecha.
+                console.log(`Longitud de mecha actual: ${this.longitudMecha}`);
+            } else {
+                console.log("No tienes suficiente oro para extender la mecha (necesitas 1000 de oro).");
+            }
+        }
+    }
+
+    // Función de prueba para sumar oro (solo para desarrollo/pruebas).
+    sumarOroPrueba() {
+        if (Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.F)) {
+            this.cantidadOro += 100;
+            this.textoCantidadOro.setText(`${this.cantidadOro}`.padStart(10, "0"));
+            console.log(`Oro sumado (prueba). Oro actual: ${this.cantidadOro}`);
+        }
+    }
+
+// --- Funciones de Eventos y Mecánicas del Juego ---
+
+    // Maneja la detonación de la bomba (explosión).
+    manejarDetonacionBomba() {
+        // Si ya hay una explosión activa, se ignora la nueva solicitud para evitar múltiples explosiones.
+        if (this.explosionActiva) {
+            return;
+        }
+        this.explosionActiva = true; // Marca que hay una explosión activa.
+        this.crearExplosion(); // Llama a la función para crear el efecto de explosión.
+    }
+
+    // Crea el sprite de la explosión y gestiona su animación y efectos.
+    crearExplosion() {
+        // Obtiene la posición actual del personaje (donde se detonó la bomba).
+        const xPersonaje = this.personaje.x;
+        const yPersonaje = this.personaje.y;
+
+        // Crea el sprite de la explosión con físicas.
+        let explosionSprite = this.physics.add.sprite(xPersonaje, yPersonaje, "spriteExplosion").setOrigin(0.5);
+        explosionSprite.setDepth(11);
+
+        // Añade un solapamiento entre la explosión y el grupo de rocas. llamará a la función 'explosionGolpeaRoca'.
+        this.physics.add.overlap(explosionSprite, this.grupoRocas, this.explosionGolpeaRoca, null, this);
+
+        // Animación de la explosión: escala y se desvanece.
+        this.tweens.add({
+            targets: explosionSprite,
+            scale: { from: 0.5, to: 1 }, // La explosión crece de 0.5 a 1 de su tamaño original.
+            alpha: { from: 1, to: 0 }, // La explosión se desvanece gradualmente.
+            ease: 'Sine.easeInOut', // Tipo de interpolación para la animación.
+            duration: 500, // Duración total de la animación en milisegundos.
+            onComplete: () => {
+                explosionSprite.destroy(); // Destruye el sprite de la explosión una vez que la animación termina.
+                this.explosionActiva = false; // Permite que se pueda detonar una nueva bomba.
+            }
+        });
+    }
+
+    // Maneja la lógica cuando una explosión golpea una roca o una oroca.
+    explosionGolpeaRoca(explosion, rocaGolpeada) {
+        // Si la roca ya ha sido destruida (inactiva), no hace nada.
+        if (!rocaGolpeada.active) {
+            return;
         }
 
-        // Acelerar el consumo de la mecha
-        this.mechaAccelerated = true;
+        let esOroca = false;
+        let indiceOroca = -1;
 
-        // Crear un timer para desactivar la aceleración después de 5 segundos
-        this.TemporizadorAcelerarConsumo = this.time.delayedCall(5000, () => {
-            this.mechaAccelerated = false;
-            this.TemporizadorAcelerarConsumo = null; // Limpiar la referencia al timer
+        // Busca si la roca golpeada es una oroca en el array de orocas.
+        for (let i = 0; i < this.orocas.length; i++) {
+            if (this.orocas[i].sprite === rocaGolpeada) {
+                esOroca = true;
+                indiceOroca = i;
+                break;
+            }
+        }
+
+        if (esOroca) {
+            // Si es una oroca, suma puntos y oro.
+            this.puntosCuotaActuales += this.puntosPorRoca;
+            this.cantidadOro += this.oroPorOroca;
+            this.textoCantidadOro.setText(`${this.cantidadOro}`.padStart(10, "0"));
+            console.log(`¡Oroca destruida! Puntos: ${this.puntosCuotaActuales}, Oro: ${this.cantidadOro}`);
+
+            // Elimina la oroca del array de orocas para que no se pueda interactuar con ella de nuevo.
+            if (indiceOroca !== -1) {
+                this.orocas.splice(indiceOroca, 1);
+            }
+        } else {
+            // Si es una roca normal, solo suma puntos.
+            this.puntosCuotaActuales += this.puntosPorRoca;
+            console.log(`¡Roca destruida! Puntos: ${this.puntosCuotaActuales}`);
+        }
+
+        // Actualiza el texto de los puntos actuales en la UI.
+        this.textopuntosCuotaActuales.setText(`${this.puntosCuotaActuales} /`.padStart(12, "0"));
+
+        // Elimina el tile correspondiente del tilemap para que no se renderice visualmente.
+        if (rocaGolpeada.tileX !== undefined && rocaGolpeada.tileY !== undefined) {
+            this.capaRocas.removeTileAt(rocaGolpeada.tileX, rocaGolpeada.tileY);
+        }
+
+        // Destruye el sprite de la roca/oroca.
+        rocaGolpeada.destroy();
+    }
+
+    // Maneja la colisión del personaje con un sprite de fuego.
+    manejarContactoFuego(personaje, fuegoTocado) {
+        console.log("¡El personaje ha tocado el fuego!");
+        fuegoTocado.destroy(); // Elimina el sprite de fuego al ser tocado.
+
+        this.mechaAcelerada = true; // Activa el modo de consumo acelerado de la mecha.
+
+        // Crea un nuevo temporizador para desactivar la aceleración después de un tiempo.
+        this.temporizadorAcelerarConsumo = this.time.delayedCall(5000, () => {
+            this.mechaAcelerada = false; // Desactiva el modo acelerado.
+            this.temporizadorAcelerarConsumo = null; // Limpia la referencia al temporizador.
             console.log("El consumo de la mecha ha vuelto a la normalidad.");
         }, [], this);
 
         console.log("El consumo de la mecha se ha acelerado durante 5 segundos.");
     }
 
-    // --- FUNCIÓN PARA ACTUALIZAR EL RECORTE DE LA MECHA ---
-    UpdateQuemarMecha() {
-        if (this.ImagenMecha) {
-            // Asegurarse de que la longitud de la mecha no sea negativa
+    // Actualiza el recorte visual de la imagen de la mecha para reflejar su longitud actual.
+    actualizarRecorteMecha() {
+        if (this.imagenMecha) {
+            // Asegura que la longitud de la mecha esté dentro del rango válido (0 a 100).
             this.longitudMecha = Phaser.Math.Clamp(this.longitudMecha, 0, 100);
 
-            // Calcular el ancho de recorte basado en el porcentaje
-            const AnchoOriginal = this.ImagenMecha.texture.source[0].width;
-            const CortarAncho = AnchoOriginal * (this.longitudMecha / 100);
+            // Calcula el ancho de recorte basado en el porcentaje de longitud de la mecha.
+            const anchoOriginal = this.imagenMecha.texture.source[0].width;
+            const anchoRecorte = anchoOriginal * (this.longitudMecha / 100);
 
-            // Aplicar el recorte. El origen (0, 0.5) asegura que el recorte se haga desde la derecha.
-            this.ImagenMecha.setCrop(0, 0, CortarAncho, this.ImagenMecha.texture.source[0].height);
+            // Aplica el recorte a la imagen de la mecha.
+            this.imagenMecha.setCrop(0, 0, anchoRecorte, this.imagenMecha.texture.source[0].height);
         }
     }
 
-    // --- FUNCIÓN PARA DECREMENTAR LA LONGITUD DE LA MECHA ---
-    QuemarMecha() {
+    // Decrementa la longitud de la mecha y reinicia el juego si se consume por completo.
+    quemarMecha() {
         if (this.longitudMecha > 0) {
-            // Ajustar el valor de decremento según si la mecha está acelerada o no
-            const CortarImagenMecha = this.mechaAccelerated ? 1 : 0.1; // 1 para acelerado, 0.1 para normal
-            this.longitudMecha -= CortarImagenMecha;
-            this.UpdateQuemarMecha();
+            // Define la cantidad de decremento. Es mayor si la mecha está acelerada.
+            const decrementoMecha = this.mechaAcelerada ? 1 : 0.1; // 1 para acelerado, 0.1 para normal.
+            this.longitudMecha -= decrementoMecha;
+            this.actualizarRecorteMecha(); // Actualiza la visualización de la mecha.
         } else {
-            console.log("¡La mecha se ha consumido!");
-            // Puedes detener el timer principal si la mecha llega a 0
+            console.log("¡La mecha se ha consumido! Fin del juego.");
+            // Detiene todos los eventos de tiempo para evitar que sigan ejecutándose.
             this.time.removeAllEvents();
-            this.scene.restart(); // Reiniciar la escena o manejar el fin del juego
+            this.scene.restart(); // Reinicia la escena (esto es de momento, en algun momento llevara a "Fin de Juego").
         }
     }
 }
