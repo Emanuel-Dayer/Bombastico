@@ -67,7 +67,7 @@ export default class EscenaGameplay extends Phaser.Scene {
 
         // Carga de imágenes individuales para la interfaz de usuario y elementos del juego.
         this.load.image("interfazJuego", "./public/assets/Gameplay_3.svg");
-        this.load.image("fondoJuego", "./public/assets/fondo.svg");
+        this.load.image("fondoJuego", "./public/assets/Fondo.svg");
         this.load.image("iconoOro", "./public/assets/oro.svg");
         this.load.image("imagenMecha", "./public/assets/Mecha.svg");
         this.load.image("bombaDoble", "./public/assets/Doble_Bomba.svg");
