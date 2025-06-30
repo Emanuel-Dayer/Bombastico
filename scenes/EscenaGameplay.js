@@ -58,44 +58,20 @@ export default class EscenaGameplay extends Phaser.Scene {
         this.juegoIniciado = false;
         this.mechaActiva = true;
         this.SpritedeExplosionDestruido = false; // Asegurar que esta variable esté inicializada
+
+        // Obtener los valores de configuración de EscenaMaestra
+        const escenaMaestra = this.scene.get('EscenaMaestra');
+        this.volumenConfiguracion = escenaMaestra.volumenConfiguracion;
+        this.brilloConfiguracion = escenaMaestra.brilloConfiguracion;
     }
 
     preload() {
-        // Carga del archivo JSON del tilemap y la imagen del tileset.
-        this.load.tilemapTiledJSON("mapaPrincipal", "public/assets/tilemap/map.json");
-        this.load.image("imagenTileset", "public/assets/texture.svg");
-
-        // Carga de imágenes individuales para la interfaz de usuario y elementos del juego.
-        this.load.image("interfazJuego", "./public/assets/Gameplay_3.svg");
-        this.load.image("fondoJuego", "./public/assets/Fondo.svg");
-        this.load.image("iconoOro", "./public/assets/oro.svg");
-        this.load.image("imagenMecha", "./public/assets/Mecha.svg");
-        this.load.image("bombaDoble", "./public/assets/Doble_Bomba.svg");
-        this.load.image("megaBomba", "./public/assets/Mega_Bomba.svg");
-        this.load.image("tnt", "./public/assets/TNT.svg");
-        this.load.image("habilidadXRAY", "./public/assets/XRAY.svg");
-        this.load.image("extenderCuerda", "./public/assets/Extender_Cuerda.svg");
-        this.load.image("repararCuerda", "./public/assets/Reparar_Cuerda.svg");
-        this.load.image("spriteExplosion", "./public/assets/Explosion.svg");
-
-        // Carga de spritesheets para animaciones o múltiples frames.
-        // Spritesheet para la animación del fuego.
-        this.load.spritesheet("spritesFuego", "public/assets/texture.svg", {
-            frameWidth: 60,
-            frameHeight: 60,
-            startFrame: 3, // El frame 3 y 4 son para la animación del fuego.
-            endFrame: 4,
-        });
-        // Spritesheet general para tiles del juego (rocas, personaje, agujeros).
-        this.load.spritesheet("spritesTileset", "public/assets/texture.svg", {
-            frameWidth: 60,
-            frameHeight: 60,
-        });
+ 
     }
 
     create() {
-        console.log(`${this.mechaAcelerada}`);
-        console.log(`${this.tiempoRestanteAceleracion}`);
+        //console.log(`${this.mechaAcelerada}`);
+        //console.log(`${this.tiempoRestanteAceleracion}`);
 
         // Calcula el centro de la cámara para posicionar elementos de fondo.
         const centroX = this.cameras.main.width / 2;
@@ -123,20 +99,50 @@ export default class EscenaGameplay extends Phaser.Scene {
         // --- Textos de la Interfaz de Usuario (UI) ---
         // Icono de oro
         this.add.image(250, 570 - 160, "iconoOro").setOrigin(0.5).setScale(1.5).setDepth(30);
-        // Se crean los elementos de texto para mostrar información al jugador.
-        this.textoCantidadOro = this.add.text(332, 550 - 165, `${this.cantidadOro}`.padStart(10, "0"), {
-            fontSize: "45px",
-            fill: "#42DED9",
-            fontFamily: "Impact"
-        }).setDepth(30);
+        
+        // Texto de Cantidad de Oro
+        const oroBaseX = 448;
+        const oroBaseY = 570 - 160;
+        const oroFontSize = "45px";
+        const oroFontFamily = "Impact";
+
+        this.textoCantidadOroPadding = this.add.text(oroBaseX, oroBaseY, '', {
+            fontSize: oroFontSize,
+            fill: "#1a5754", // Color para el relleno
+            fontFamily: oroFontFamily
+        }).setOrigin(0.5).setDepth(30);
+
+        this.textoCantidadOroValue = this.add.text(oroBaseX, oroBaseY, '', {
+            fontSize: oroFontSize,
+            fill: "#42DED9", // Color para el valor
+            fontFamily: oroFontFamily
+        }).setOrigin(0.5).setDepth(30);
 
         // icono de imagen de roca
         this.add.image(250, 475 - 200, "spritesTileset", 7 - 1).setOrigin(0.5).setScale(1.2).setDepth(30);
-        this.textopuntajeTotal = this.add.text(332, 450 - 200, `${this.puntajeTotal}`.padStart(10, "0"), {
-            fontSize: "45px",
-            fill: "#42DED9",
-            fontFamily: "Impact"
-        }).setDepth(30);
+        
+        // Texto de Puntaje Total
+        const puntajeBaseX = 448;
+        const puntajeBaseY = 475 - 200;
+        const puntajeFontSize = "45px";
+        const puntajeFontFamily = "Impact";
+
+        this.textopuntajeTotalPadding = this.add.text(puntajeBaseX, puntajeBaseY, '', {
+            fontSize: puntajeFontSize,
+            fill: "#1a5754", // Color para el relleno
+            fontFamily: puntajeFontFamily
+        }).setOrigin(0.5).setDepth(30);
+
+        this.textopuntajeTotalValue = this.add.text(puntajeBaseX, puntajeBaseY, '', {
+            fontSize: puntajeFontSize,
+            fill: "#42DED9", // Color para el valor
+            fontFamily: puntajeFontFamily
+        }).setOrigin(0.5).setDepth(30);
+
+        // Inicializar los textos con los valores actuales
+        this.actualizarDisplayOro();
+        this.actualizarDisplayPuntaje();
+
 
         // --- Gráfico para Tachar la Habilidad XRAY ---
         // Este gráfico se usa para indicar visualmente que la habilidad XRAY no está disponible.
@@ -238,7 +244,7 @@ export default class EscenaGameplay extends Phaser.Scene {
             this.temporizadorAcelerarConsumo = this.time.delayedCall(this.tiempoRestanteAceleracion, () => {
                 this.mechaAcelerada = false;
                 this.temporizadorAcelerarConsumo = null;
-                console.log("El consumo de la mecha ha vuelto a la normalidad.");
+                //console.log("El consumo de la mecha ha vuelto a la normalidad.");
             }, [], this);
         }
 
@@ -266,6 +272,20 @@ export default class EscenaGameplay extends Phaser.Scene {
             this.mechaTimerEvent.paused = false;
         }
 
+        // Overlays de brillo para gameplay
+        this.blackOverlay = this.add.graphics({ fillStyle: { color: 0x000000 } });
+        this.blackOverlay.fillRect(0, 0, this.cameras.main.width, this.cameras.main.height);
+        this.blackOverlay.setDepth(100); // Asegurarse de que esté por encima de todo
+        this.blackOverlay.setVisible(false); // Inicialmente oculto
+
+        this.whiteOverlay = this.add.graphics({ fillStyle: { color: 0xFFFFFF } });
+        this.whiteOverlay.fillRect(0, 0, this.cameras.main.width, this.cameras.main.height);
+        this.whiteOverlay.setDepth(100); // Asegurarse de que esté por encima de todo
+        this.whiteOverlay.setBlendMode(Phaser.BlendModes.ADD); // Modo de fusión para añadir luz
+        this.whiteOverlay.setVisible(false);
+
+        this.aplicarBrillo(); // Aplicar el brillo inicial al crear la escena de gameplay
+
         // Iniciar la secuencia de introducción
         this.iniciarSecuenciaIntro();
     }
@@ -276,8 +296,10 @@ export default class EscenaGameplay extends Phaser.Scene {
             // Maneja el movimiento del personaje según las teclas presionadas.
             this.manejarMovimientoPersonaje();
 
+            /*
             // Maneja la activación/desactivación del modo de depuración y el reinicio del juego.
             this.manejarDebugReiniciar();
+            */
 
             // Maneja la lógica para la habilidad XRAY (revelar orocas ocultas).
             this.manejarHabilidadXRAY();
@@ -285,8 +307,10 @@ export default class EscenaGameplay extends Phaser.Scene {
             // Maneja la lógica para la habilidad de extender la mecha.
             this.manejarHabilidadExtenderMecha();
 
+            /*
             // Función de prueba para sumar oro (se activa con la tecla 'F').
             this.sumarOroPrueba();
+            */
         }
     }
 
@@ -535,7 +559,7 @@ export default class EscenaGameplay extends Phaser.Scene {
                 if (this.mechaTimerEvent) {
                     this.mechaTimerEvent.paused = false;
                 }
-                console.log("Secuencia de introducción completada. Juego iniciado.");
+                //console.log("Secuencia de introducción completada. Juego iniciado.");
             }
         });
     }
@@ -604,6 +628,7 @@ export default class EscenaGameplay extends Phaser.Scene {
     }
 
     // Debuj y movimiento.
+    /*
     manejarDebugReiniciar() {
         // Activa/desactiva el modo de depuración de físicas con la tecla 'P'.
         if (Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.P)) {
@@ -617,6 +642,7 @@ export default class EscenaGameplay extends Phaser.Scene {
             escenaMaestra.reiniciarGameplayDeFabrica()
         }
     }
+    */
 
     // Lógica para la habilidad XRAY: revela orocas ocultas.
     manejarHabilidadXRAY() {
@@ -629,8 +655,8 @@ export default class EscenaGameplay extends Phaser.Scene {
 
             if (this.cantidadOro >= costoXRAY && hayOcultasNoReveladas) {
                 this.cantidadOro -= costoXRAY;
-                this.textoCantidadOro.setText(`${this.cantidadOro}`.padStart(10, "0"));
-                console.log(`Usado XRAY. Oro restante: ${this.cantidadOro}`);
+                this.actualizarDisplayOro(); // Actualiza la visualización del oro
+                //console.log(`Usado XRAY. Oro restante: ${this.cantidadOro}`);
 
                 // Itera sobre todas las orocas para revelar las que están ocultas.
                 this.orocas.forEach(oroca => {
@@ -647,13 +673,14 @@ export default class EscenaGameplay extends Phaser.Scene {
                 if (!aunHayOcultasNoReveladas) {
                     this.graficoTachadoXRAYFondo.setVisible(true);
                     this.graficoTachadoXRAY.setVisible(true);
-                    console.log("Todas las orocas ocultas han sido reveladas. XRAY no puede usarse más.");
+                    //console.log("Todas las orocas ocultas han sido reveladas. XRAY no puede usarse más.");
                 }
-
+            /*
             } else if (this.cantidadOro < costoXRAY) {
-                console.log("No tienes suficiente oro para usar XRAY (necesitas 500 de oro).");
-            } else if (!hayOcultasNoReveladas) {
-                console.log("No hay orocas ocultas que revelar.");
+                //console.log("No tienes suficiente oro para usar XRAY (necesitas 500 de oro).");
+            */
+            } else if (this.cantidadOro >= costoXRAY && !hayOcultasNoReveladas) {
+                //console.log("No hay orocas ocultas que revelar.");
                 // Si no hay orocas ocultas, la habilidad XRAY está "agotada" para esta ronda.
                 this.graficoTachadoXRAYFondo.setVisible(true);
                 this.graficoTachadoXRAY.setVisible(true);
@@ -671,27 +698,29 @@ export default class EscenaGameplay extends Phaser.Scene {
 
             if (this.cantidadOro >= costoExtenderMecha) {
                 this.cantidadOro -= costoExtenderMecha;
-                this.textoCantidadOro.setText(`${this.cantidadOro}`.padStart(10, "0"));
-                console.log(`Mecha extendida. Oro restante: ${this.cantidadOro}`);
+                this.actualizarDisplayOro(); // Actualiza la visualización del oro
+                //console.log(`Mecha extendida. Oro restante: ${this.cantidadOro}`);
 
                 // Aumenta la longitud de la mecha, sin exceder el máximo.
                 this.longitudMecha = Math.min(this.longitudMecha + aumentoMecha, mechaMaxima);
                 this.actualizarRecorteMecha(); // Actualiza la visualización de la mecha.
-                console.log(`Longitud de mecha actual: ${this.longitudMecha}`);
-            } else {
+                //console.log(`Longitud de mecha actual: ${this.longitudMecha}`);
+            } /*else {
                 console.log("No tienes suficiente oro para extender la mecha (necesitas 1000 de oro).");
-            }
+            } */
         }
     }
 
+    /*
     // Función de prueba para sumar oro (solo para desarrollo/pruebas).
     sumarOroPrueba() {
         if (Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.F)) {
             this.cantidadOro += 100;
-            this.textoCantidadOro.setText(`${this.cantidadOro}`.padStart(10, "0"));
+            this.actualizarDisplayOro(); // Actualiza la visualización del oro
             console.log(`Oro sumado (prueba). Oro actual: ${this.cantidadOro}`);
         }
     }
+    */
 
     // --- Funciones de Eventos y Mecánicas del Juego ---
 
@@ -759,8 +788,8 @@ export default class EscenaGameplay extends Phaser.Scene {
             // Si es una oroca, suma puntos y oro.
             this.puntajeTotal += this.puntosPorRoca;
             this.cantidadOro += this.oroPorOroca;
-            this.textoCantidadOro.setText(`${this.cantidadOro}`.padStart(10, "0"));
-            console.log(`¡Oroca destruida! Puntos: ${this.puntajeTotal}, Oro: ${this.cantidadOro}`);
+            this.actualizarDisplayOro(); // Actualiza la visualización del oro
+            //console.log(`¡Oroca destruida! Puntos: ${this.puntajeTotal}, Oro: ${this.cantidadOro}`);
 
             // Elimina la oroca del array de orocas para que no se pueda interactuar con ella de nuevo.
             if (indiceOroca !== -1) {
@@ -771,13 +800,13 @@ export default class EscenaGameplay extends Phaser.Scene {
         } else {
             // Si es una roca normal, solo suma puntos.
             this.puntajeTotal += this.puntosPorRoca;
-            console.log(`¡Roca destruida! Puntos: ${this.puntajeTotal}`);
+            //console.log(`¡Roca destruida! Puntos: ${this.puntajeTotal}`);
             // Muestra la animación de puntos.
             this.MostrarAnimacionesdeTexto(rocaGolpeada.x, rocaGolpeada.y, this.puntosPorRoca);
         }
 
         // Actualiza el texto de los puntos actuales en la UI.
-        this.textopuntajeTotal.setText(`${this.puntajeTotal}`.padStart(10, "0"));
+        this.actualizarDisplayPuntaje();
 
         // Elimina el tile correspondiente del tilemap para que no se renderice visualmente.
         if (rocaGolpeada.tileX !== undefined && rocaGolpeada.tileY !== undefined) {
@@ -844,7 +873,7 @@ export default class EscenaGameplay extends Phaser.Scene {
 
     // Maneja la colisión del personaje con un sprite de fuego.
     manejarContactoFuego(personaje, fuegoTocado) {
-        console.log("¡El personaje ha tocado el fuego!");
+        // console.log("¡El personaje ha tocado el fuego!");
         fuegoTocado.destroy(); // Elimina el sprite de fuego al ser tocado.
 
         if (this.temporizadorAcelerarConsumo) {
@@ -854,13 +883,13 @@ export default class EscenaGameplay extends Phaser.Scene {
         this.mechaAcelerada = true; // Activa el modo de consumo acelerado de la mecha.
 
         // Crea un nuevo temporizador para desactivar la aceleración después de un tiempo.
-        this.temporizadorAcelerarConsumo = this.time.delayedCall(5000, () => {
+        this.temporizadorAcelerarConsumo = this.time.delayedCall(2000, () => {
             this.mechaAcelerada = false; // Desactiva el modo acelerado.
             this.temporizadorAcelerarConsumo = null; // Limpia la referencia al temporizador.
-            console.log("El consumo de la mecha ha vuelto a la normalidad.");
+            // console.log("El consumo de la mecha ha vuelto a la normalidad.");
         }, [], this);
 
-        console.log("El consumo de la mecha se ha acelerado durante 5 segundos.");
+        // console.log("El consumo de la mecha se ha acelerado durante 5 segundos.");
     }
 
     // Actualiza el recorte visual de la imagen de la mecha para reflejar su longitud actual.
@@ -882,21 +911,23 @@ export default class EscenaGameplay extends Phaser.Scene {
     quemarMecha() {
         if (this.longitudMecha > 0 && this.mechaActiva) { // Solo quema la mecha si está activa
             // Define la cantidad de decremento. Es mayor si la mecha está acelerada.
-            const decrementoMecha = this.mechaAcelerada ? 1 : 0.1; // 1 para acelerado, 0.1 para normal.
+            const decrementoMecha = this.mechaAcelerada ? 1.5 : 0.3; // 1 para acelerado, 0.3 para normal.
             this.longitudMecha -= decrementoMecha;
             this.actualizarRecorteMecha(); // Actualiza la visualización de la mecha.
         } else if (this.longitudMecha <= 0 && this.mechaActiva) {
-            console.log("¡La mecha se ha consumido! Fin del juego.");
+            // console.log("¡La mecha se ha consumido! Fin del juego.");
             // Detiene todos los eventos de tiempo para evitar que sigan ejecutándose.
             this.time.removeAllEvents();
             const escenaMaestra = this.scene.get('EscenaMaestra');
-            escenaMaestra.reiniciarGameplayDeFabrica()
+            // Al terminar la mecha, se pasa finDelJuego: true a EscenaMaestra
+            escenaMaestra.finDelJuego = true;
+            escenaMaestra.reiniciarGameplayDeFabrica();
         }
     }
 
     verificarFinDeJuego() {
         if (this.AnimacionesdePuntosPendientes === 0 && this.SpritedeExplosionDestruido) {
-            console.log("Todas las animaciones de puntos han terminado y la explosión ha finalizado. Reiniciando escena...");
+            // console.log("Todas las animaciones de puntos han terminado y la explosión ha finalizado. Reiniciando escena...");
             const escenaMaestra = this.scene.get('EscenaMaestra');
             // Guarda los valores actuales en la escena maestra
             escenaMaestra.cantidadOro = this.cantidadOro;
@@ -910,5 +941,64 @@ export default class EscenaGameplay extends Phaser.Scene {
             }
             escenaMaestra.reiniciarGameplay(); // Llama a la maestra para relanzar con los valores actualizados
         }
+    }
+
+    // Función para aplicar el brillo a la escena de gameplay
+    aplicarBrillo() {
+        // Brillo de 0 a 1 (oscurecer con overlay negro)
+        if (this.brilloConfiguracion <= 1) {
+            const opacidadBlack = 1 - this.brilloConfiguracion; // 1 (0% brillo) a 0 (100% brillo)
+            this.blackOverlay.setAlpha(opacidadBlack);
+            this.blackOverlay.setVisible(opacidadBlack > 0);
+            this.whiteOverlay.setAlpha(0); // Asegurarse de que el blanco esté oculto
+            this.whiteOverlay.setVisible(false);
+        } 
+        // Brillo de 1 a 2 (aclarar con overlay blanco)
+        else { // this.brilloConfiguracion > 1
+            const opacidadWhite = this.brilloConfiguracion - 1; // 0 (100% brillo) a 1 (200% brillo)
+            this.whiteOverlay.setAlpha(opacidadWhite);
+            this.whiteOverlay.setVisible(opacidadWhite > 0);
+            this.blackOverlay.setAlpha(0); // Asegurarse de que el negro esté oculto
+            this.blackOverlay.setVisible(false);
+        }
+    }
+
+    // Nuevas funciones para actualizar la visualización de oro y puntaje
+    actualizarDisplayOro() {
+        const oroData = `${this.cantidadOro}`;
+        const oroTotalLength = 10;
+        const oroPaddingLength = oroTotalLength - oroData.length;
+        const oroPaddingString = '0'.repeat(Math.max(0, oroPaddingLength));
+
+        this.textoCantidadOroPadding.setText(oroPaddingString);
+        this.textoCantidadOroValue.setText(oroData);
+
+        // Ajustar las posiciones X para que el texto combinado esté centrado
+        const oroBaseX = 448;
+        const oroPaddingWidth = this.textoCantidadOroPadding.width;
+        const oroValueWidth = this.textoCantidadOroValue.width;
+        const totalOroWidth = oroPaddingWidth + oroValueWidth;
+
+        this.textoCantidadOroPadding.x = oroBaseX - (totalOroWidth / 2) + (oroPaddingWidth / 2);
+        this.textoCantidadOroValue.x = oroBaseX - (totalOroWidth / 2) + oroPaddingWidth + (oroValueWidth / 2);
+    }
+
+    actualizarDisplayPuntaje() {
+        const puntajeData = `${this.puntajeTotal}`;
+        const puntajeTotalLength = 10;
+        const puntajePaddingLength = puntajeTotalLength - puntajeData.length;
+        const puntajePaddingString = '0'.repeat(Math.max(0, puntajePaddingLength));
+
+        this.textopuntajeTotalPadding.setText(puntajePaddingString);
+        this.textopuntajeTotalValue.setText(puntajeData);
+
+        // Ajustar las posiciones X para que el texto combinado esté centrado
+        const puntajeBaseX = 448;
+        const puntajePaddingWidth = this.textopuntajeTotalPadding.width;
+        const puntajeValueWidth = this.textopuntajeTotalValue.width;
+        const totalPuntajeWidth = puntajePaddingWidth + puntajeValueWidth;
+
+        this.textopuntajeTotalPadding.x = puntajeBaseX - (totalPuntajeWidth / 2) + (puntajePaddingWidth / 2);
+        this.textopuntajeTotalValue.x = puntajeBaseX - (totalPuntajeWidth / 2) + puntajePaddingWidth + (puntajeValueWidth / 2);
     }
 }
