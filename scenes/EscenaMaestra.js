@@ -193,15 +193,18 @@ export default class EscenaMaestra extends Phaser.Scene {
         //console.log("Escena Maestra: Lanzando EscenaGameplay...");
         //console.log(`Nivel: ${this.Nivel}`);
         //console.log(`Nivel: ${this.levelConfigurations[this.Nivel]}`);
+        this.Nivel = 1;
+        this.puntajeTotal = 0;
+
         this.finDelJuego = false; // Resetear el estado de fin de juego al iniciar nuevo gameplay
         this.scene.launch("EscenaGameplay", {
             cantidadOro: 0,
             puntajeTotal: 0,
-            longitudMecha: 100,
+            longitudMecha: 2,
+            Nivel : 1, // Pasa el nivel actual
             configuracionGeneracion: this.getCurrentLevelConfig(), // Pasa la configuración del nivel actual
             mechaAcelerada: false,
-            tiempoRestanteAceleracion: 0,
-            Nivel : this.Nivel // Pasa el nivel actual
+            tiempoRestanteAceleracion: 0
             // No es necesario pasar volumenConfiguracion y brilloConfiguracion aquí,
             // ya que EscenaGameplay los obtiene directamente de this.scene.get('EscenaMaestra')
         });
