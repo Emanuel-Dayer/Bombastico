@@ -200,7 +200,7 @@ export default class EscenaMaestra extends Phaser.Scene {
         this.scene.launch("EscenaGameplay", {
             cantidadOro: 0,
             puntajeTotal: 0,
-            longitudMecha: 2,
+            longitudMecha: 100,
             Nivel : 1, // Pasa el nivel actual
             configuracionGeneracion: this.getCurrentLevelConfig(), // Pasa la configuración del nivel actual
             mechaAcelerada: false,
