@@ -77,6 +77,20 @@ export default class EscenaGameplay extends Phaser.Scene {
         const centroX = this.cameras.main.width / 2;
         const centroY = this.cameras.main.height / 2;
 
+        // Overlays de brillo para gameplay
+        this.blackOverlay = this.add.graphics({ fillStyle: { color: 0x000000 } });
+        this.blackOverlay.fillRect(0, 0, this.cameras.main.width, this.cameras.main.height);
+        this.blackOverlay.setDepth(100); // Asegurarse de que esté por encima de todo
+        this.blackOverlay.setVisible(false); // Inicialmente oculto
+
+        this.whiteOverlay = this.add.graphics({ fillStyle: { color: 0xFFFFFF } });
+        this.whiteOverlay.fillRect(0, 0, this.cameras.main.width, this.cameras.main.height);
+        this.whiteOverlay.setDepth(100); // Asegurarse de que esté por encima de todo
+        this.whiteOverlay.setBlendMode(Phaser.BlendModes.ADD); // Modo de fusión para añadir luz
+        this.whiteOverlay.setVisible(false);
+
+        this.aplicarBrillo(); // Aplicar el brillo inicial al crear la escena de gameplay
+
         // --- Elementos de UI y Fondo ---
         // Se añaden primero para que estén en la parte inferior de las capas.
         this.add.image(centroX, centroY, "fondoJuego").setOrigin(0.5).setDepth(0);
@@ -271,20 +285,6 @@ export default class EscenaGameplay extends Phaser.Scene {
         if (this.mechaTimerEvent) {
             this.mechaTimerEvent.paused = false;
         }
-
-        // Overlays de brillo para gameplay
-        this.blackOverlay = this.add.graphics({ fillStyle: { color: 0x000000 } });
-        this.blackOverlay.fillRect(0, 0, this.cameras.main.width, this.cameras.main.height);
-        this.blackOverlay.setDepth(100); // Asegurarse de que esté por encima de todo
-        this.blackOverlay.setVisible(false); // Inicialmente oculto
-
-        this.whiteOverlay = this.add.graphics({ fillStyle: { color: 0xFFFFFF } });
-        this.whiteOverlay.fillRect(0, 0, this.cameras.main.width, this.cameras.main.height);
-        this.whiteOverlay.setDepth(100); // Asegurarse de que esté por encima de todo
-        this.whiteOverlay.setBlendMode(Phaser.BlendModes.ADD); // Modo de fusión para añadir luz
-        this.whiteOverlay.setVisible(false);
-
-        this.aplicarBrillo(); // Aplicar el brillo inicial al crear la escena de gameplay
 
         // Iniciar la secuencia de introducción
         this.iniciarSecuenciaIntro();
