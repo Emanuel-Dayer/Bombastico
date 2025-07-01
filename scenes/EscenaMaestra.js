@@ -59,31 +59,31 @@ export default class EscenaMaestra extends Phaser.Scene {
                 cantidadGruposRocas: 9,
                 cantidadTotalRocas: 20,
                 probabilidadOroca: 0.2,
-                probabilidadOrocaOculta: 0.8
+                probabilidadOrocaOculta: 0.6
             },
             8: {
                 cantidadAgujeros: 9,
                 cantidadFuegos: 9,
                 cantidadGruposRocas: 20,
                 cantidadTotalRocas: 30,
-                probabilidadOroca: 0.4,
-                probabilidadOrocaOculta: 0.6
+                probabilidadOroca: 0.2,
+                probabilidadOrocaOculta: 0.7
             },
             10: {
                 cantidadAgujeros: 15,
                 cantidadFuegos: 10,
                 cantidadGruposRocas: 30,
                 cantidadTotalRocas: 35,
-                probabilidadOroca: 0.5,
-                probabilidadOrocaOculta: 0.6
+                probabilidadOroca: 0.2,
+                probabilidadOrocaOculta: 0.8
             },
             20: {
                 cantidadAgujeros: 20,
                 cantidadFuegos: 15,
                 cantidadGruposRocas: 55,
                 cantidadTotalRocas: 45,
-                probabilidadOroca: 0.6,
-                probabilidadOrocaOculta: 0.5
+                probabilidadOroca: 0.3,
+                probabilidadOrocaOculta: 0.8
             }
         };
 
@@ -241,5 +241,4 @@ export default class EscenaMaestra extends Phaser.Scene {
         });
     }
 }
-
 
