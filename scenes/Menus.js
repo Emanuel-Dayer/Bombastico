@@ -2,6 +2,8 @@ export default class Menus extends Phaser.Scene {
     constructor() {
         super("Menus");
         this.db = null;
+        // Objeto para almacenar las referencias a los sonidos cargados
+        this.sounds = {};
     }
 
     init(data) {
@@ -57,7 +59,21 @@ export default class Menus extends Phaser.Scene {
         this.load.image("Indice", "./public/assets/Indice.svg");
         this.load.image("MenuFin", "./public/assets/PantallaFin.svg");
         this.load.image("ValorSlider", "./public/assets/ValorSlider.svg");
+
+        // Carga de sonidos
+        this.load.audio("Comprar_Rayos_x", "./public/assets/Comprar_Rayos_x.wav");
+        this.load.audio("Entrar-Salir-Menu", "./public/assets/Entrar-Salir-Menu_2.wav");
+        this.load.audio("ExplosionFalsa", "./public/assets/ExplosionFalsa_2.wav");
+        this.load.audio("Explotar", "./public/assets/Explotar.wav");
+        this.load.audio("Explotar_2", "./public/assets/Explotar_2.wav");
+        this.load.audio("Extender_Cuerda", "./public/assets/Extender_Cuerda_2.wav");
+        this.load.audio("Moverse_Menu", "./public/assets/Moverse_Menu.wav");
+        this.load.audio("Musica_Gameplay", "./public/assets/Musica_Gameplay.wav");
+        this.load.audio("Musica-Menu", "./public/assets/Musica-Menu.wav");
+        this.load.audio("Tocar_Fuego", "./public/assets/Tocar_Fuego_2.wav");
     }
+
+
 
     create() {
         if (window.firebaseDb) {
@@ -220,6 +236,24 @@ export default class Menus extends Phaser.Scene {
             fill: '#1a5754'
         }).setDepth(30).setVisible(false);
 
+        // Inicializar los objetos de sonido
+        this.sounds.buyXray = this.sound.add("Comprar_Rayos_x");
+        this.sounds.menuEnterExit = this.sound.add("Entrar-Salir-Menu");
+        this.sounds.falseExplosion = this.sound.add("ExplosionFalsa");
+        this.sounds.explode_2 = this.sound.add("Explotar_2");
+        this.sounds.explode = this.sound.add("Explotar");
+        this.sounds.extendRope = this.sound.add("Extender_Cuerda");
+        this.sounds.menuMove = this.sound.add("Moverse_Menu");
+        this.sounds.gameplayMusic = this.sound.add("Musica_Gameplay");
+        this.sounds.menuLoopMusic = this.sound.add("Musica-Menu");
+        this.sounds.touchFire = this.sound.add("Tocar_Fuego");
+
+        // Reproducir la música del menú en bucle
+        // Añadir una verificación para asegurar que el objeto de sonido existe antes de intentar reproducirlo
+        if (this.sounds.menuLoopMusic && !this.sounds.menuLoopMusic.isPlaying) {
+            this.sounds.menuLoopMusic.play({ loop: true, volume: this.volumenConfiguracion });
+        }
+
 
         if (this.finDelJuego) {
             this.MenuFinDelJuego();
@@ -229,33 +263,46 @@ export default class Menus extends Phaser.Scene {
     }
 
     update() {
+        // Actualizar el volumen de la música de bucle del menú
+        if (this.sounds.menuLoopMusic && this.sounds.menuLoopMusic.isPlaying) {
+            this.sounds.menuLoopMusic.setVolume(this.volumenConfiguracion);
+        }
+
         if (this.estadoActualMenu === 'principal') {
             if (Phaser.Input.Keyboard.JustDown(this.teclas.down) || Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.S)) {
                 this.opcionSeleccionada = (this.opcionSeleccionada + 1) % this.opcionesMenuPrincipal.length;
                 this.actualizarSeleccionMenuPrincipal();
+                this.playMenuSound(this.sounds.menuMove);
             } else if (Phaser.Input.Keyboard.JustDown(this.teclas.up) || Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.W)) {
                 this.opcionSeleccionada = (this.opcionSeleccionada - 1 + this.opcionesMenuPrincipal.length) % this.opcionesMenuPrincipal.length;
                 this.actualizarSeleccionMenuPrincipal();
+                this.playMenuSound(this.sounds.menuMove);
             } else if (Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.ESPACIO)) {
                 this.opcionesMenuPrincipal[this.opcionSeleccionada].funcion.call(this);
+                this.playMenuSound(this.sounds.menuEnterExit);
             }
         }
         else if (this.estadoActualMenu === 'mensajes') {
             if (Phaser.Input.Keyboard.JustDown(this.teclas.right) || Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.D)) {
                 this.mostrarMensaje(2);
+                this.playMenuSound(this.sounds.menuMove);
             } else if (Phaser.Input.Keyboard.JustDown(this.teclas.left) || Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.A)) {
                 this.mostrarMensaje(1);
+                this.playMenuSound(this.sounds.menuMove);
             } else if (Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.ESPACIO)) {
                 this.MenuGeneral();
+                this.playMenuSound(this.sounds.menuEnterExit);
             }
         }
         else if (this.estadoActualMenu === 'configuracion') {
             if (Phaser.Input.Keyboard.JustDown(this.teclas.down) || Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.S)) {
                 this.opcionConfiguracionSeleccionada = (this.opcionConfiguracionSeleccionada + 1) % 3;
                 this.actualizarSeleccionConfiguracion();
+                this.playMenuSound(this.sounds.menuMove);
             } else if (Phaser.Input.Keyboard.JustDown(this.teclas.up) || Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.W)) {
                 this.opcionConfiguracionSeleccionada = (this.opcionConfiguracionSeleccionada - 1 + 3) % 3;
                 this.actualizarSeleccionConfiguracion();
+                this.playMenuSound(this.sounds.menuMove);
             } else if (this.opcionConfiguracionSeleccionada === 0 && (this.teclas.right.isDown || this.teclasPersonalizadas.D.isDown)) {
                 this.volumenConfiguracion = Phaser.Math.Clamp(this.volumenConfiguracion + 0.01, 0, 2);
                 this.actualizarSlidersConfiguracion();
@@ -272,31 +319,47 @@ export default class Menus extends Phaser.Scene {
                 this.aplicarBrillo();
             } else if (this.opcionConfiguracionSeleccionada === 2 && (Phaser.Input.Keyboard.JustDown(this.teclas.left) || Phaser.Input.Keyboard.JustDown(this.teclas.right) || Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.A) || Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.D))) {
                 this.sys.game.scale.toggleFullscreen();
+                this.playMenuSound(this.sounds.menuEnterExit);
             } else if (Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.ESPACIO)) {
                 this.MenuGeneral();
+                this.playMenuSound(this.sounds.menuEnterExit);
             }
         }
         else if (this.estadoActualMenu === 'creditos') {
             if (Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.ESPACIO)) {
                 this.MenuGeneral();
+                this.playMenuSound(this.sounds.menuEnterExit);
             }
         }
         else if (this.estadoActualMenu === 'ingresoHighScore') {
             if (Phaser.Input.Keyboard.JustDown(this.teclas.right) || Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.D)) {
                 this.indiceLetraSeleccionada = (this.indiceLetraSeleccionada + 1) % this.letrasEmpresa.length;
                 this.actualizarSeleccionLetra();
+                this.playMenuSound(this.sounds.menuMove);
             } else if (Phaser.Input.Keyboard.JustDown(this.teclas.left) || Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.A)) {
                 this.indiceLetraSeleccionada = (this.indiceLetraSeleccionada - 1 + this.letrasEmpresa.length) % this.letrasEmpresa.length;
                 this.actualizarSeleccionLetra();
+                this.playMenuSound(this.sounds.menuMove);
             }
             else if (Phaser.Input.Keyboard.JustDown(this.teclas.up) || Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.W)) {
                 this.cambiarLetra(1);
+                this.playMenuSound(this.sounds.menuMove);
             } else if (Phaser.Input.Keyboard.JustDown(this.teclas.down) || Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.S)) {
                 this.cambiarLetra(-1);
+                this.playMenuSound(this.sounds.menuMove);
             }
             else if (Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.ESPACIO)) {
                 this.guardarHighScore();
+                this.playMenuSound(this.sounds.menuEnterExit);
             }
+        }
+    }
+
+    // Función auxiliar para reproducir sonidos con el volumen configurado
+    playMenuSound(sound) {
+        // Asegurarse de que el objeto de sonido existe antes de intentar reproducirlo
+        if (sound) {
+            sound.play({ volume: this.volumenConfiguracion });
         }
     }
 
@@ -442,6 +505,16 @@ export default class Menus extends Phaser.Scene {
         this.scene.stop("Menus");
         const escenaMaestra = this.scene.get('EscenaMaestra');
         escenaMaestra.lanzarGameplay();
+        // Detener la música del menú al iniciar el gameplay
+        if (this.sounds.menuLoopMusic && this.sounds.menuLoopMusic.isPlaying) {
+            this.sounds.menuLoopMusic.stop();
+        }
+        // Reproducir la música de gameplay
+        // Asegurarse de que el objeto de sonido exista antes de intentar reproducirlo
+        this.sound.stopAll();
+        if (this.sounds.gameplayMusic) {
+            this.sounds.gameplayMusic.play({ loop: true, volume: escenaMaestra.volumenConfiguracion });
+        }
     }
 
     MenuConfiguracion() {

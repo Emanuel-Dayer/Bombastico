@@ -1,6 +1,7 @@
 export default class EscenaGameplay extends Phaser.Scene {
     constructor() {
         super("EscenaGameplay");
+        this.sounds = {}; // Objeto para almacenar las referencias a los sonidos cargados
     }
 
     init(data) {
@@ -288,9 +289,31 @@ export default class EscenaGameplay extends Phaser.Scene {
 
         // Iniciar la secuencia de introducción
         this.iniciarSecuenciaIntro();
+
+        // Obtener los sonidos del menú para usarlos en gameplay
+        const menusScene = this.scene.get('Menus');
+        if (menusScene && menusScene.sounds) {
+            this.sounds.buyXray = menusScene.sounds.buyXray;
+            this.sounds.extendRope = menusScene.sounds.extendRope;
+            this.sounds.explode = menusScene.sounds.explode;
+            this.sounds.explode_2 = menusScene.sounds.explode_2;
+            this.sounds.touchFire = menusScene.sounds.touchFire;
+            this.sounds.falseExplosion = menusScene.sounds.falseExplosion;
+            this.sounds.gameplayMusic = menusScene.sounds.gameplayMusic; // Asegurarse de que la música de gameplay esté disponible
+
+            // Reproducir la música de gameplay si aún no está sonando
+            if (this.sounds.gameplayMusic && !this.sounds.gameplayMusic.isPlaying) {
+                this.sounds.gameplayMusic.play({ loop: true, volume: this.volumenConfiguracion });
+            }
+        }
     }
 
     update() {
+        // Actualizar el volumen de la música de gameplay
+        if (this.sounds.gameplayMusic && this.sounds.gameplayMusic.isPlaying) {
+            this.sounds.gameplayMusic.setVolume(this.volumenConfiguracion);
+        }
+
         // Solo manejar el movimiento y otras lógicas si el juego ha iniciado
         if (this.juegoIniciado) {
             // Maneja el movimiento del personaje según las teclas presionadas.
@@ -311,6 +334,13 @@ export default class EscenaGameplay extends Phaser.Scene {
             // Función de prueba para sumar oro (se activa con la tecla 'F').
             this.sumarOroPrueba();
             */
+        }
+    }
+
+    // Función auxiliar para reproducir sonidos con el volumen configurado
+    playGameplaySound(sound) {
+        if (sound) {
+            sound.play({ volume: this.volumenConfiguracion });
         }
     }
 
@@ -490,6 +520,7 @@ export default class EscenaGameplay extends Phaser.Scene {
                 // Una vez que el personaje está en su tamaño original, crear la explosión visual y la real
                 this.CrearExplosionVisual();
                 this.CrearExplosionReal(); // Llamar a la explosión real
+                this.playGameplaySound(this.sounds.falseExplosion); // Sonido de explosión falsa
             }
         });
     }
@@ -656,6 +687,7 @@ export default class EscenaGameplay extends Phaser.Scene {
             if (this.cantidadOro >= costoXRAY && hayOcultasNoReveladas) {
                 this.cantidadOro -= costoXRAY;
                 this.actualizarDisplayOro(); // Actualiza la visualización del oro
+                this.playGameplaySound(this.sounds.buyXray); // Sonido de comprar XRAY
                 //console.log(`Usado XRAY. Oro restante: ${this.cantidadOro}`);
 
                 // Itera sobre todas las orocas para revelar las que están ocultas.
@@ -693,12 +725,13 @@ export default class EscenaGameplay extends Phaser.Scene {
         // Se activa con las teclas 'Q' o 'X'.
         if (Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.Q) || Phaser.Input.Keyboard.JustDown(this.teclasPersonalizadas.X)) {
             const costoExtenderMecha = 1000;
-            const aumentoMecha = 20; // Cantidad en que aumenta la longitud de la mecha.
+            const aumentoMecha = 15; // Cantidad en que aumenta la longitud de la mecha.
             const mechaMaxima = 100; // Longitud máxima de la mecha (100%).
 
             if (this.cantidadOro >= costoExtenderMecha) {
                 this.cantidadOro -= costoExtenderMecha;
                 this.actualizarDisplayOro(); // Actualiza la visualización del oro
+                this.playGameplaySound(this.sounds.extendRope); // Sonido de extender cuerda
                 //console.log(`Mecha extendida. Oro restante: ${this.cantidadOro}`);
 
                 // Aumenta la longitud de la mecha, sin exceder el máximo.
@@ -746,6 +779,8 @@ export default class EscenaGameplay extends Phaser.Scene {
 
         // Añade un solapamiento entre la explosión y el grupo de rocas. llamará a la función 'explosionGolpeaRoca'.
         this.physics.add.overlap(explosionSprite, this.grupoRocas, this.explosionGolpeaRoca, null, this);
+        this.playGameplaySound(this.sounds.explode); // Sonido de explosión
+        this.playGameplaySound(this.sounds.explode_2); // Sonido de explosión
 
         // Animación de la explosión: escala y se desvanece.
         this.tweens.add({
@@ -786,7 +821,7 @@ export default class EscenaGameplay extends Phaser.Scene {
 
         if (esOroca) {
             // Si es una oroca, suma puntos y oro.
-            this.puntajeTotal += this.puntosPorRoca;
+            this.puntajeTotal += this.puntosPorRoca + 400;
             this.cantidadOro += this.oroPorOroca;
             this.actualizarDisplayOro(); // Actualiza la visualización del oro
             //console.log(`¡Oroca destruida! Puntos: ${this.puntajeTotal}, Oro: ${this.cantidadOro}`);
@@ -796,7 +831,7 @@ export default class EscenaGameplay extends Phaser.Scene {
                 this.orocas.splice(indiceOroca, 1);
             }
             // Muestra la animación de puntos y oro.
-            this.MostrarAnimacionesdeTexto(rocaGolpeada.x, rocaGolpeada.y, this.puntosPorRoca, this.oroPorOroca);
+            this.MostrarAnimacionesdeTexto(rocaGolpeada.x, rocaGolpeada.y, this.puntosPorRoca + 400, this.oroPorOroca);
         } else {
             // Si es una roca normal, solo suma puntos.
             this.puntajeTotal += this.puntosPorRoca;
@@ -875,6 +910,7 @@ export default class EscenaGameplay extends Phaser.Scene {
     manejarContactoFuego(personaje, fuegoTocado) {
         // console.log("¡El personaje ha tocado el fuego!");
         fuegoTocado.destroy(); // Elimina el sprite de fuego al ser tocado.
+        this.playGameplaySound(this.sounds.touchFire); // Sonido de tocar fuego
 
         if (this.temporizadorAcelerarConsumo) {
             this.temporizadorAcelerarConsumo.destroy();
@@ -921,6 +957,7 @@ export default class EscenaGameplay extends Phaser.Scene {
             const escenaMaestra = this.scene.get('EscenaMaestra');
             // Al terminar la mecha, se pasa finDelJuego: true a EscenaMaestra
             escenaMaestra.finDelJuego = true;
+            this.sound.stopAll();
             escenaMaestra.reiniciarGameplayDeFabrica();
         }
     }
