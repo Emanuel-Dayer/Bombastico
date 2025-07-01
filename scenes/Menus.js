@@ -73,8 +73,6 @@ export default class Menus extends Phaser.Scene {
         this.load.audio("Tocar_Fuego", "./public/assets/Tocar_Fuego_2.wav");
     }
 
-
-
     create() {
         if (window.firebaseDb) {
             this.db = window.firebaseDb;
@@ -92,10 +90,10 @@ export default class Menus extends Phaser.Scene {
         const escenaMaestra = this.scene.get('EscenaMaestra');
         
         this.textosHighscore = [];
-        // Initialize TopExtractor with placeholders to show immediately
+        // Inicializa TopExtractor con marcadores de posición para mostrar inmediatamente
         escenaMaestra.TopExtractor = [];
         for (let i = 0; i < 10; i++) {
-            escenaMaestra.TopExtractor.push({ Empresa: "----", puntaje: 0 }); // Placeholder
+            escenaMaestra.TopExtractor.push({ Empresa: "----", puntaje: 0 }); // Marcador de posición
         }
 
         escenaMaestra.TopExtractor.forEach((texto, index) => {
@@ -135,12 +133,12 @@ export default class Menus extends Phaser.Scene {
             });
         });
         
-        this.actualizarDisplayHighscores(); // Update high scores display with placeholders immediately
+        this.actualizarDisplayHighscores(); // Actualiza la visualización de las puntuaciones altas con marcadores de posición inmediatamente
 
-        // Load high scores from Firebase in the background
+        // Carga las puntuaciones altas de Firebase en segundo plano
         this.cargarHighScoresDesdeFirebase().catch(error => {
-            console.error("Error loading high scores on start:", error);
-            // Optionally, display a user-friendly message about the loading error
+            console.error("Error al cargar las puntuaciones altas al inicio:", error);
+            // Opcionalmente, muestra un mensaje amigable al usuario sobre el error de carga
         });
 
         this.mensaje1 = this.add.image(centroX, centroY, "Mensaje").setOrigin(0.5).setDepth(30).setVisible(false);
@@ -463,10 +461,10 @@ export default class Menus extends Phaser.Scene {
         this.indiceMenuPrincipal.setVisible(true);
         this.opcionSeleccionada = 0;
         this.actualizarSeleccionMenuPrincipal();
-        // Reload high scores from Firebase when returning to the main menu
+        // Recarga las puntuaciones altas de Firebase al regresar al menú principal
         this.cargarHighScoresDesdeFirebase().catch(error => {
-            console.error("Error loading high scores in MenuGeneral:", error);
-            // Optionally, display a user-friendly message
+            console.error("Error al cargar las puntuaciones altas en MenuGeneral:", error);
+            // Opcionalmente, muestra un mensaje amigable
         });
 
         this.blackOverlay.setVisible(true);
@@ -735,13 +733,13 @@ export default class Menus extends Phaser.Scene {
         const escenaMaestra = this.scene.get('EscenaMaestra');
         let insertedLocally = false;
 
-        // Check if the score qualifies for the current TopExtractor list
-        // This makes the UI update immediately.
+        // Verifica si la puntuación califica para la lista actual de TopExtractor
+        // Esto hace que la interfaz de usuario se actualice inmediatamente.
         for (let i = 0; i < escenaMaestra.TopExtractor.length; i++) {
             if (nuevoPuntaje > escenaMaestra.TopExtractor[i].puntaje || (nuevoPuntaje === 0 && escenaMaestra.TopExtractor[i].puntaje === 0 && escenaMaestra.TopExtractor[i].Empresa === "----")) {
-                // Insert new score and shift existing ones down
+                // Inserta la nueva puntuación y desplaza las existentes hacia abajo
                 for (let j = escenaMaestra.TopExtractor.length - 1; j > i; j--) {
-                    escenaMaestra.TopExtractor[j] = { ...escenaMaestra.TopExtractor[j - 1] }; // Deep copy
+                    escenaMaestra.TopExtractor[j] = { ...escenaMaestra.TopExtractor[j - 1] }; // Copia profunda
                 }
                 escenaMaestra.TopExtractor[i] = { Empresa: nombreEmpresa, puntaje: nuevoPuntaje };
                 insertedLocally = true;
@@ -749,25 +747,25 @@ export default class Menus extends Phaser.Scene {
             }
         }
         
-        // Update the UI immediately with the new local high scores
+        // Actualiza la interfaz de usuario inmediatamente con las nuevas puntuaciones altas locales
         this.actualizarDisplayHighscores();
 
-        // Transition to main menu immediately
+        // Transiciona al menú principal inmediatamente
         this.MenuGeneral();
 
-        // If the score was inserted locally (meaning it qualifies), send to Firebase in the background
+        // Si la puntuación fue insertada localmente (lo que significa que califica), envíala a Firebase en segundo plano
         if (insertedLocally) {
             try {
                 await this.enviarHighScoreAFirebase(nombreEmpresa, nuevoPuntaje);
-                // After successful submission, refresh the list from Firebase to ensure consistency
-                // This handles cases where multiple clients submit scores.
+                // Después de un envío exitoso, actualiza la lista desde Firebase para asegurar la consistencia
+                // Esto maneja casos en los que varios clientes envían puntuaciones.
                 await this.cargarHighScoresDesdeFirebase();
             } catch (error) {
-                console.error("Error submitting or refreshing high scores:", error);
-                // Potentially, notify the user that the score couldn't be saved online
+                console.error("Error al enviar o actualizar las puntuaciones altas:", error);
+                // Potencialmente, notifica al usuario que la puntuación no pudo guardarse en línea
             }
         } else {
-            console.log("Score did not qualify for high score list, not sending to Firebase.");
+            console.log("La puntuación no calificó para la lista de puntuaciones altas, no se envía a Firebase.");
         }
     }
 
@@ -818,8 +816,8 @@ export default class Menus extends Phaser.Scene {
 
     async cargarHighScoresDesdeFirebase() {
         if (!this.db) {
-            console.warn("Firestore DB not initialized. Cannot load high scores.");
-            return Promise.reject(new Error("Firestore DB not initialized."));
+            console.warn("Firestore DB no inicializada. No se pueden cargar las puntuaciones altas.");
+            return Promise.reject(new Error("Firestore DB no inicializada."));
         }
 
         const highscoresRef = this.db.collection("highscores");
@@ -844,16 +842,16 @@ export default class Menus extends Phaser.Scene {
             this.actualizarDisplayHighscores();
             return loadedScores;
         } catch (error) {
-            console.error("Error loading high scores from Firebase:", error);
-            // Re-throw or reject to propagate the error for external handling if needed
+            console.error("Error al cargar las puntuaciones altas desde Firebase:", error);
+            // Vuelve a lanzar o rechaza para propagar el error para un manejo externo si es necesario
             return Promise.reject(error);
         }
     }
 
     async enviarHighScoreAFirebase(playerName, score) {
         if (!this.db) {
-            console.warn("Firestore DB not initialized. Cannot send high score.");
-            return Promise.reject(new Error("Firestore DB not initialized."));
+            console.warn("Firestore DB no inicializada. No se puede enviar la puntuación alta.");
+            return Promise.reject(new Error("Firestore DB no inicializada."));
         }
 
         try {
@@ -862,10 +860,30 @@ export default class Menus extends Phaser.Scene {
                 score: score,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
-            console.log("High score successfully sent to Firebase.");
+            console.log("Puntuación alta enviada exitosamente a Firebase.");
+
+            // --- LÓGICA PARA MANTENER EL TOP 10 ---
+            const highscoresRef = this.db.collection("highscores");
+            // Obtener todas las puntuaciones ordenadas por score de forma ascendente
+            const snapshot = await highscoresRef.orderBy("score", "asc").get(); 
+
+            if (snapshot.size > 10) {
+                // Calcular cuántos documentos eliminar para que queden exactamente 10
+                const numToDelete = snapshot.size - 10;
+                console.log(`Eliminando ${numToDelete} puntuaciones más bajas.`);
+                const batch = this.db.batch();
+                // Iterar sobre los documentos a eliminar (los primeros 'numToDelete' en el snapshot ascendente)
+                for (let i = 0; i < numToDelete; i++) {
+                    batch.delete(snapshot.docs[i].ref);
+                }
+                await batch.commit();
+                console.log("Puntuaciones más bajas eliminadas exitosamente.");
+            }
+            // --- FIN LÓGICA ---
+
             return true;
         } catch (error) {
-            console.error("Error sending high score to Firebase:", error);
+            console.error("Error al enviar la puntuación alta a Firebase:", error);
             return Promise.reject(error);
         }
     }
